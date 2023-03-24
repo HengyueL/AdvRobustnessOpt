@@ -2,15 +2,16 @@
     "seed": 42,
     "continue": false,
     "curr_batch": 0,
-    "end_batch_num": 100,
+    "end_batch_num": 2,
+    "save_vis": true,
 
     "log_folder":{
-        "save_root": "Test-Sanity-APGD-Max"
+        "save_root": "Test-Sanity-Max-PyGranso"
     },
 
     "classifier_model":{
-        "type": "DeepMind-Cifar10",
-        "weight_path": "os.path.join('..', 'model', 'DeepMind-Cifar10', 'L2-Extra.pt')",
+        "type": "PAT-Cifar10",
+        "weight_path": "os.path.join('..', 'model', 'PAT-Cifar10', 'pat_self_0.5.pt')",
         "use_clamp_input": false
     },
 
@@ -28,12 +29,11 @@
     },
 
     "test_attack": {
-        "attack_type": "APGD",
-        "attack_true_label": true
+        "attack_type": "PyGranso"
     },
 
     "apgd_params":{
-        "attack_method": "L1",
+        "distance_metric": "L1",
         "attack_bound": 12,
 
         "apgd_n_restart": 5,
@@ -41,7 +41,7 @@
     },
 
     "fab_params":{
-        "attack_method": "L1",
+        "distance_metric": "L1",
 
         "fab_init_scale": 12,
         "fab_n_restart": 5,
@@ -49,13 +49,14 @@
     },
 
     "granso_params": {
-        "attack_method": "L1",
-        "attack_bound": 12,
-
-        "granso_max_iter": 400,
+        "distance_metric": "PAT",
+        "attack_bound": 0.5,
+        
         "granso_early_max_iter": 20,
+        "granso_max_iter": 400,
         "granso_early_feasibility_thres": 0.01,
-        "granso_restarts": 5,
+        "granso_n_restarts": 5,
+
         "granso_loss": {
             "type": "Margin",
             "reduction": "sum",
@@ -66,7 +67,11 @@
         "granso_mu0": 1,
         "granso_mem": 10,
         "granso_stat_l2": false,
-        "granso_steering_l1": false
+        "granso_steering_l1": false,
+
+        "granso_eq_tol": 1e-2,
+        "granso_ieq_tol": 1e-2,
+        "granso_opt_tol": 1e-2
     },
 
     "comment": {

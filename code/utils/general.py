@@ -84,15 +84,10 @@ def save_model_ckp(
     return msg
 
 
-def tensor2img(tensor, scale_factor=1):
+def tensor2img(tensor):
     """
         Take into an array with shape [1, 3, x, x] and convert into an ndarray with shape [x, x, 3]
     """
-    tensor = torch.nn.functional.interpolate(
-        tensor,
-        scale_factor=scale_factor,
-        mode="nearest-exact"
-    )
     array = tensor.detach().cpu().numpy()[0, :, :, :]
     array = np.transpose(array, [1, 2, 0])
     return array

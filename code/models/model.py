@@ -20,7 +20,7 @@ class AlexNetFeatureModel(nn.Module):
         Note:
             This model can only calculate LPIPS and should not be used to train a classifier.
     """
-    def __init__(self, lpips_feature_layer=False, use_clamp_input=False, dtype=torch.float):
+    def __init__(self, lpips_feature_layer=False, use_clamp_input=False):
         super().__init__()
         print(" >> Initing a ** AlexNet LPIPS ** model.")
         self.normalizer = ImageNetNormalizer(use_clamp_value=use_clamp_input)
@@ -53,7 +53,6 @@ class AlexNetFeatureModel(nn.Module):
             return tuple(feature_list)
     
     def classifier_features(self, x):
-        x = x.float()
         x = self.normalizer(x)
         x_layer1 = self.layer1(x)
         x_layer2 = self.layer2(x_layer1)
@@ -63,7 +62,6 @@ class AlexNetFeatureModel(nn.Module):
         return x_layer5
 
     def classifier(self, last_layer):
-        x = x.float()
         x = self.layer6(x)
         x = self.model.avgpool(x)
         x = torch.flatten(x, 1)
