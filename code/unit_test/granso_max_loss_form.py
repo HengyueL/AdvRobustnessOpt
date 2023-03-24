@@ -320,7 +320,9 @@ if __name__ == "__main__":
         # === If use Perceptual distance as d() ===
         lpips_backbone = AlexNetFeatureModel(
             lpips_feature_layer=False, 
-            use_clamp_input=False
+            use_clamp_input=False,
+            device=device,
+            dtype=granso_dtype
         ).to(device=device, dtype=granso_dtype)
         lpips_backbone.eval()
         lpips_model = LPIPSDistance(lpips_backbone).to(device=device, dtype=granso_dtype)
