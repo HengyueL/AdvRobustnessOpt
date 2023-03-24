@@ -247,7 +247,7 @@ if __name__ == "__main__":
     assert cfg["dataset"]["batch_size"] == 1, "Only want to support batch size = 1"
 
     default_dtype = torch.float
-    granso_dtype = torch.double
+    granso_dtype = torch.float
 
     # Create Root Path to save Experiment logs
     save_root = os.path.join("..", "log_folder")

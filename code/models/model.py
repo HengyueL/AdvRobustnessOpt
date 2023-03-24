@@ -20,13 +20,13 @@ class AlexNetFeatureModel(nn.Module):
         Note:
             This model can only calculate LPIPS and should not be used to train a classifier.
     """
-    def __init__(self, lpips_feature_layer=False, use_clamp_input=False):
+    def __init__(self, lpips_feature_layer=False, use_clamp_input=False, device=None, dtype=torch.float):
         super().__init__()
         print(" >> Initing a ** AlexNet LPIPS ** model.")
         self.normalizer = ImageNetNormalizer(use_clamp_value=use_clamp_input)
         self.model = torchvision_models.alexnet(
             pretrained=True
-            ).eval()
+            ).to(device, dtype=dtype).eval()
 
         assert len(self.model.features) == 13
         self.layer1 = nn.Sequential(self.model.features[:2])
