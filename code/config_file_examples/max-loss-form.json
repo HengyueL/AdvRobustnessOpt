@@ -2,7 +2,7 @@
     "seed": 42,
     "continue": false,
     "curr_batch": 0,
-    "end_batch_num": 2,
+    "end_batch_num": 3,
     "save_vis": true,
 
     "log_folder":{
@@ -23,7 +23,7 @@
         "input_size": 32,
         "workers": 0,
         "batch_size": 1,
-        "clean_dataset_path": "C:\\Users\\Liang\\dataset\\Cifar10\\Clean",
+        "clean_dataset_path": "E:\\Dataset\\cifar10\\clean",
         "train_transform": "default"
 
     },
@@ -69,9 +69,9 @@
         "granso_stat_l2": false,
         "granso_steering_l1": false,
 
-        "granso_eq_tol": 1e-2,
-        "granso_ieq_tol": 1e-2,
-        "granso_opt_tol": 1e-2
+        "granso_eq_tol": 1e-4,
+        "granso_ieq_tol": 1e-4,
+        "granso_opt_tol": 1e-4
     },
 
     "comment": {

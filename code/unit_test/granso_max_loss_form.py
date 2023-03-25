@@ -247,7 +247,7 @@ if __name__ == "__main__":
     assert cfg["dataset"]["batch_size"] == 1, "Only want to support batch size = 1"
 
     default_dtype = torch.float
-    granso_dtype = torch.float
+    granso_dtype = torch.double
 
     # Create Root Path to save Experiment logs
     save_root = os.path.join("..", "log_folder")
@@ -530,7 +530,6 @@ if __name__ == "__main__":
                         print_opt, granso_config, mu0=mu_continue,
                         lpips_model=lpips_model,
                         H0_init=H_continue,
-                        is_continue=True,
                         max_iter=None,
                         dtype=granso_dtype
                     )
@@ -544,7 +543,7 @@ if __name__ == "__main__":
                         granso_final_iter_dict[0] = sol.iters
                     else:
                         granso_final_iter_dict[0] = float("inf")
-                    granso_best_sample, best_loss, best_distance, _, box_violations, _, best_iter = calc_restart_summary(
+                    granso_best_es_sample, best_loss, best_distance, _, box_violations, _, best_iter = calc_restart_summary(
                         granso_final_output_dict,
                         granso_final_iter_dict,
                         input_to_granso,
@@ -580,7 +579,7 @@ if __name__ == "__main__":
                     )
                     os.makedirs(vis_dir, exist_ok=True)
 
-                    adv_image_np = tensor2img(granso_best_sample.to(device, dtype=torch.float))
+                    adv_image_np = tensor2img(granso_best_es_sample.to(device, dtype=torch.float))
                     orig_image_np = tensor2img(inputs)
                     orig_image_list.append(orig_image_np)
                     adv_image_list.append(adv_image_np)
@@ -599,3 +598,7 @@ if __name__ == "__main__":
                         adv_save_name, np.asarray(adv_image_list)
                     )
                     print("Check Save Array Shape: ", np.asarray(orig_image_list).shape)
+                    
+            save_dict_to_csv(
+                    final_summary, final_res_csv_dir
+                )

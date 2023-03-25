@@ -38,6 +38,7 @@ class AlexNetFeatureModel(nn.Module):
         self.lpips_feature_layer = lpips_feature_layer
 
     def features(self, x):
+        x = x.float()
         x = self.normalizer(x)
         x_layer1 = self.layer1(x)
         x_layer2 = self.layer2(x_layer1)
