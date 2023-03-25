@@ -466,7 +466,7 @@ if __name__ == "__main__":
 
                         # === If code 0 is reached before es_max_it, then continue is unnecessary
                         print(sol.H_final["S"].shape, sol.H_final["Y"].shape, sol.H_final["rho"].shape)
-                        has_converged = (sol.H_final["S"].shape[1] != sol.H_final["rho"].shape[0])
+                        has_converged = (sol.H_final["S"].shape[1] != sol.H_final["rho"].shape[1])
                         granso_has_converged_dict[restart_num] = has_converged
                     else:
                         granso_iter_dict[restart_num] = float("inf")
@@ -526,7 +526,7 @@ if __name__ == "__main__":
                     mu_continue = granso_mu_dict[best_idx]
                     has_converged = granso_has_converged_dict[best_idx]
 
-                    if not has_converged:
+                    if not has_converged: 
                         sol = execute_granso_max_attack(
                             input_to_granso, label_to_granso,
                             x_continue,
