@@ -49,7 +49,7 @@
     },
 
     "granso_params": {
-        "distance_metric": "L2",
+        "distance_metric": "PAT",
         "attack_bound": 0.5,
         
         "granso_early_max_iter": 20,
@@ -69,9 +69,9 @@
         "granso_stat_l2": false,
         "granso_steering_l1": false,
 
-        "granso_eq_tol": 1e-2,
-        "granso_ieq_tol": 1e-2,
-        "granso_opt_tol": 1e-2
+        "granso_eq_tol": 1e-4,
+        "granso_ieq_tol": 1e-4,
+        "granso_opt_tol": 1e-4
     },
 
     "comment": {
