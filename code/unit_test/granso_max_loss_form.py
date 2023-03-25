@@ -430,6 +430,7 @@ if __name__ == "__main__":
                 granso_x_interm_dict = {}
                 granso_H_dict = {}
                 granso_mu_dict = {}
+                granso_has_converged_dict = {}
                 # To save the final results
                 granso_final_output_dict = {}
                 granso_final_iter_dict = {}
@@ -465,11 +466,14 @@ if __name__ == "__main__":
 
                         # === If code 0 is reached before es_max_it, then continue is unnecessary
                         print(sol.H_final["S"].shape, sol.H_final["Y"].shape, sol.H_final["rho"].shape)
+                        has_converged = (sol.H_final["S"].shape[1] != sol.H_final["rho"].shape[0])
+                        granso_has_converged_dict[restart_num] = has_converged
                     else:
                         granso_iter_dict[restart_num] = float("inf")
                         granso_H_dict[restart_num] = None
                         granso_mu_dict[restart_num] = None
                         granso_x_interm_dict[restart_num] = x_init.clone()
+                        granso_has_converged_dict[restart_num] = True
 
                     t_2 = time.time()  
                     granso_opt_time += (t_2) - (t_1)
@@ -520,19 +524,24 @@ if __name__ == "__main__":
                     H_continue = granso_H_dict[best_idx]
                     x_continue = granso_x_interm_dict[best_idx]
                     mu_continue = granso_mu_dict[best_idx]
+                    has_converged = granso_has_converged_dict[best_idx]
 
-                    sol = execute_granso_max_attack(
-                        input_to_granso, label_to_granso,
-                        x_continue,
-                        classifier_model,
-                        granso_attack_loss_func,
-                        device,
-                        print_opt, granso_config, mu0=mu_continue,
-                        lpips_model=lpips_model,
-                        H0_init=H_continue,
-                        max_iter=None,
-                        dtype=granso_dtype
-                    )
+                    if not has_converged:
+                        sol = execute_granso_max_attack(
+                            input_to_granso, label_to_granso,
+                            x_continue,
+                            classifier_model,
+                            granso_attack_loss_func,
+                            device,
+                            print_opt, granso_config, mu0=mu_continue,
+                            lpips_model=lpips_model,
+                            H0_init=H_continue,
+                            max_iter=None,
+                            dtype=granso_dtype
+                        )
+                    else:
+                        sol = None
+
                     t_4 = time.time()
                     granso_opt_time += (t_4 - t_1)
                     granso_adv_output = get_granso_adv_output_maxform(
@@ -542,7 +551,8 @@ if __name__ == "__main__":
                     if sol is not None:
                         granso_final_iter_dict[0] = sol.iters
                     else:
-                        granso_final_iter_dict[0] = float("inf")
+                        granso_final_iter_dict[0] = granso_iter_dict[best_idx]
+
                     granso_best_es_sample, best_loss, best_distance, _, box_violations, _, best_iter = calc_restart_summary(
                         granso_final_output_dict,
                         granso_final_iter_dict,
@@ -598,7 +608,7 @@ if __name__ == "__main__":
                         adv_save_name, np.asarray(adv_image_list)
                     )
                     print("Check Save Array Shape: ", np.asarray(orig_image_list).shape)
-                    
+
             save_dict_to_csv(
                     final_summary, final_res_csv_dir
                 )
