@@ -435,7 +435,7 @@ class APGDAttackMargin():
                 #print('pert {}'.format((x - x_best_adv).abs().view(x.shape[0], -1).sum(-1).max()))
             
             if loss_best.sum() > best_loss_log:
-                best_iter_log = i+1
+                best_iter_log = i-1
                 best_loss_log = loss_best.sum()
 
             ### check step size
@@ -488,10 +488,8 @@ class APGDAttackMargin():
                         grad[fl_redtopk] = grad_best[fl_redtopk].clone()
                     
                     counter3 = 0
-                    #k = max(k - self.size_decr, self.n_iter_min)
-            print("***** Iter [%03d] | X1 norm: %.06f (Fea)" % (
-                i, y1.sum())
-            )
+                print("APGD maring iter [%d] -- loss [%.04f]" % (i, y1.sum().item()))
+
         print("APGD Maring finds the best loss at iter [{}]".format(best_iter_log))
         return (x_best, acc, loss_best, x_best_adv)
 
@@ -687,11 +685,7 @@ class APGDAttackCE():
         self.orig_dim = list(x.shape[1:])
         self.ndims = len(self.orig_dim)
         if self.seed is None:
-            self.seed = time.time()
-        
-        
-        
-        
+            self.seed = time.time()   
         
         ### set parameters for checkpoints
         self.n_iter_2 = max(int(0.22 * self.n_iter), 1)
@@ -953,7 +947,7 @@ class APGDAttackCE():
             
             if loss_best.sum() > best_loss_log:
                 best_loss_log = loss_best.sum()
-                best_iter_log = (i+1)
+                best_iter_log = (i-1)
             
             ### check step size
             with torch.no_grad():
@@ -1003,10 +997,8 @@ class APGDAttackCE():
                   counter3 = 0
                   #k = max(k - self.size_decr, self.n_iter_min)
             
-            print("***** Iter [%03d] | X1 norm: %.06f (Fea)" % (
-                i, y1.sum())
-            )
-        print("APGD finds the smallest loss at iter [{}]".format(best_iter_log))
+            print("APGD ce iter [%d] -- loss [%.04f]" % (i, y1.sum().item()))
+        print("APGD finds the best loss at iter [{}]".format(best_iter_log))
         return (x_best, acc, loss_best, x_best_adv)
 
     def perturb(self, x, y=None, best_loss=False, x_init=None):

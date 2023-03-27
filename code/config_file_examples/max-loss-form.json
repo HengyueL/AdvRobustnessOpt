@@ -29,27 +29,27 @@
     },
 
     "test_attack": {
-        "attack_type": "PyGranso"
+        "attack_type": "APGD"
     },
 
     "apgd_params":{
-        "distance_metric": "L1",
-        "attack_bound": 12,
+        "distance_metric": "L2",
+        "attack_bound": 0.5,
 
-        "apgd_n_restart": 5,
-        "apgd_max_iter": 100
+        "apgd_n_restarts": 5,
+        "apgd_max_iter": 200
     },
 
     "fab_params":{
         "distance_metric": "L1",
 
         "fab_init_scale": 12,
-        "fab_n_restart": 5,
+        "fab_n_restarts": 5,
         "fab_max_iter": 100
     },
 
     "granso_params": {
-        "distance_metric": "PAT",
+        "distance_metric": "L2",
         "attack_bound": 0.5,
         
         "granso_early_max_iter": 20,

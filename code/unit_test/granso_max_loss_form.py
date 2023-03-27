@@ -299,7 +299,8 @@ if __name__ == "__main__":
 
         "adv_distance": [],
         "eps": [],
-        "granso_adv_loss": [],
+
+        "adv_loss": [],
         "box_violation": [],
 
         "iters": [],
@@ -395,7 +396,7 @@ if __name__ == "__main__":
 
             if not pred_correct:
                 print_and_log(
-                    "    Batch idx [%d] predicted wrongly. Skip RE for this sample." % batch_idx,
+                    "    Sample [%d] predicted wrongly. Skip RE for this sample." % batch_idx,
                     log_file
                 )
                 # === Write Dummy values in the exp log ===
@@ -570,7 +571,7 @@ if __name__ == "__main__":
                 # Record Result
                 final_summary["adv_distance"].append(best_distance)
                 final_summary["eps"].append(attack_bound)
-                final_summary["granso_adv_loss"].append(best_loss)
+                final_summary["adv_loss"].append(best_loss)
                 final_summary["box_violation"].append(box_violations)
                 final_summary["iters"].append(best_iter)
                 final_summary["time"].append(granso_opt_time)

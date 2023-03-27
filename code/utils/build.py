@@ -289,11 +289,12 @@ def get_auto_attack(model, attack_config, dataset_config):
 
 
 def get_lp_attack(
+    attack_type,
     attack_config, 
     model, device):
 
-    attack_type = attack_config["attack_type"]
-    norm_type = attack_config["attack_method"]
+    attack_type = attack_type
+    norm_type = attack_config["distance_metric"]
     bound = attack_config["attack_bound"]
     
     if attack_type == "APGD":
