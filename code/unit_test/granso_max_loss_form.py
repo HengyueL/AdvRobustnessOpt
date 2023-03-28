@@ -478,7 +478,7 @@ if __name__ == "__main__":
 
                     t_2 = time.time()  
                     granso_opt_time += (t_2) - (t_1)
-                    
+
                     # In max-loss-form, if we already get a successful attack during the 1st stage
                     # We should not continue
                     attack_bound = granso_config["attack_bound"]
