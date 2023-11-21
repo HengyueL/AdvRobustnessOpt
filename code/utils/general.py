@@ -158,6 +158,15 @@ def plot_train_val_eval(
     plt.close(fig)
 
 
+def get_samples(config, data_from_loader):
+    if config["dataset"]["name"] in ["imagenet", "cifar10"]:
+        inputs = data_from_loader[0]
+        labels = data_from_loader[1]
+    else:
+        raise RuntimeError("Unsupported Dataset")
+    return inputs, labels
+
+
 if __name__ == "__main__":
     pass
 

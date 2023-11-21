@@ -24,7 +24,7 @@ from percept_utils.modified_attacks import FastLagrangePerceptualAttack_Revised,
 
 def build_model(
     model_config, 
-    global_config, 
+    num_classes, 
     device
     ):
     model_type = model_config["type"]
@@ -53,7 +53,6 @@ def build_model(
             model.model.load_state_dict(state_dict)
     elif "PAT-ImageNet" in model_type:
         msg = " >> Init a ImageNetResNetFeatureModel (PAT version) \n"
-        num_classes = global_config["dataset"]["num_classes"]
         model = ImageNetResNetFeatureModel(
             num_classes=num_classes,
             use_clamp_input=use_clamp_value,
@@ -69,7 +68,6 @@ def build_model(
             model.model.load_state_dict(state_dict)
     elif "PAT-Cifar" in model_type:
         msg = " >> Init a Cifar-Preatrained (PAT version) \n"
-        num_classes = global_config["dataset"]["num_classes"]
         model = CifarResNetFeatureModel(
             num_classes=num_classes,
             use_clamp_input=use_clamp_value,
@@ -198,7 +196,7 @@ def get_train_transform(config):
 
 def get_loader_clean(config, only_val=False, shuffle_val=True):
     dataset_name = config["dataset"]["name"]
-    data_path = config["dataset"]["clean_dataset_path"]
+    data_path = config["dataset"]["dataset_path"]
     batch_size = config["dataset"]["batch_size"]
     num_worders = config["dataset"]["workers"]
 

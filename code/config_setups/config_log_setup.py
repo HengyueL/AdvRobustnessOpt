@@ -51,7 +51,7 @@ def save_exp_info(save_dir, config):
     save_dict_to_json(config, exp_config_file)
 
 
-def create_log_info(dir, name="experiment_log.txt"):
+def create_log_info_file(dir, name="experiment_log.txt"):
     log_file = os.path.join(
         dir,
         name
@@ -80,7 +80,7 @@ def set_random_seeds(config):
     random.seed(seed)
 
 
-def set_devices(config):
+def set_devices():
     """
         This function returns a list of available gpu devices.
 
@@ -92,18 +92,17 @@ def set_devices(config):
         gpu_list = ["cuda:{}".format(i) for i in range(n_gpu)]
     else:
         gpu_list = None
-    set_random_seeds(config)
     return gpu_list
 
 
-def set_default_device(config):
+def set_default_device():
     """
         This function set the default device to move torch tensors.
 
         If GPU is availble, default_device = torch.device("cuda:0").
         If GPU is not available, default_device = torch.device("cpu").
     """
-    gpu_list = set_devices(config)
+    gpu_list = set_devices()
     if gpu_list is None:
         return torch.device("cpu"), gpu_list
     else:
