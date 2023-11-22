@@ -13,7 +13,6 @@ from utils.general import load_json, print_and_log, save_image, tensor2img, get_
 from attacks.target_fab import FABAttackPTModified
 import numpy as np
 
-# ======= The following functions should be synced ======
 def calc_min_dist_sample_fab(
     fab_adv_output,  # A dict of fab results
     orig_input, 
@@ -119,11 +118,6 @@ def main(cfg, default_dtype=torch.double):
         cfg, only_val=True, shuffle_val=False
     )
 
-    # === Get an auxilliary margin loss to check the decision boundary constrain (>0) means solution feasible ===
-    decision_boundary_constraint_checker = get_loss_func_eval(
-        name="Margin", reduction="None", use_clip_loss=False
-    )
-
     # === Format to summarize the final result
     opt_config = cfg["fab_params"]
     attack_type = opt_config["distance_metric"]
@@ -131,6 +125,7 @@ def main(cfg, default_dtype=torch.double):
     attack_distance_key = "%s_distance" % attack_type
     result_summary = {
         "sample_idx": [],
+        "restart": [],
         "true_label": [],
         "max_logit_before_opt": [],
         "max_logit_after_opt": [],
@@ -160,8 +155,7 @@ def main(cfg, default_dtype=torch.double):
         else:
             if batch_idx >= cfg["end_sample"]:
                 break  # Completed all images specified
-            result_summary["sample_idx"].append(batch_idx)
-
+            
             msg = "===== Testing sample [%d] =====" % batch_idx
             print_and_log(msg, log_file)
 
@@ -171,12 +165,13 @@ def main(cfg, default_dtype=torch.double):
                 pred_logits_before = classifier_model(inputs)
             pred_before = pred_logits_before.argmax(1)
             pred_correct_before = (pred_before == labels).sum().item()
-            result_summary["true_label"].append(labels.item())
-            result_summary["max_logit_before_opt"].append(pred_before.item())
-
+            
             if pred_correct_before < 0.5:
                 msg = "Sample [%d] - prediction wrong. Skip OPT >>>"
                 print_and_log(msg, log_file)
+                result_summary["sample_idx"].append(batch_idx)
+                result_summary["true_label"].append(labels.item())
+                result_summary["max_logit_before_opt"].append(pred_before.item())
                 for key in result_summary.keys():
                     if key not in ["sample_idx", "true_label", "max_logit_brefore_opt"]:
                         result_summary[key].append(-100)  # Add a placeholder in the logger
@@ -196,12 +191,17 @@ def main(cfg, default_dtype=torch.double):
                 distance_dict, boundary_distance_dict, box_violation_dict, attacked_label_dict, best_key = calc_min_dist_sample_fab(
                     fab_adv_output, inputs, attack_type, classifier_model, labels.item(), log_file
                 )
-            # === Log the best result ===
-            result_summary[attack_distance_key] = distance_dict[best_key]
-            result_summary["max_logit_after_opt"] = attacked_label_dict[best_key]
-            result_summary["distance_to_decision_boundary"] = boundary_distance_dict[best_key]
-            result_summary["box_constraint_violation"] = box_violation_dict[best_key]
-            result_summary["time"] = fab_time
+                # === Log the best result ===
+                for key in fab_adv_output.keys():
+                    result_summary["sample_idx"].append(batch_idx)
+                    result_summary["restart"].append(key)
+                    result_summary["true_label"].append(labels.item())
+                    result_summary["max_logit_before_opt"].append(pred_before.item())
+                    result_summary[attack_distance_key].append(distance_dict[key])
+                    result_summary["max_logit_after_opt"].append(attacked_label_dict[key])
+                    result_summary["distance_to_decision_boundary"].append(boundary_distance_dict[key])
+                    result_summary["box_constraint_violation"].append(box_violation_dict[key])
+                    result_summary["time"].append(fab_time)
 
             save_dict_to_csv(
                 result_summary, result_csv_dir

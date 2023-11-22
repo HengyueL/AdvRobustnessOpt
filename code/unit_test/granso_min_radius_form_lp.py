@@ -4,165 +4,195 @@ dir_path = os.path.abspath(".")
 sys.path.append(dir_path)
 import argparse, os, torch, time
 import numpy as np
-# =======
-from utils.build import build_model, get_loss_func_eval, get_loader_clean, \
-    get_samples
-from config_setups.config_log_setup import clear_terminal_output, create_log_info,\
-    makedir, save_dict_to_csv, save_exp_info, set_default_device
-from utils.general import load_json, print_and_log
-from attacks.granso_min_attack import granso_min_target
-from attacks.transform_functions import sine_transfor_box as sine_transform
-# ======= The following functions should be synced ======
+# ===========
+from utils.build import build_model, get_loss_func_eval, get_loader_clean
+from config_setups.config_log_setup import clear_terminal_output, create_log_info_file,\
+    makedir, save_dict_to_csv, save_exp_info, set_default_device, set_random_seeds
+    
+from utils.general import load_json, print_and_log, save_image, tensor2img, get_samples
+from attacks.target_fab import FABAttackPTModified
+import numpy as np
+
+
+
+def execute_granso_min_target(
+    input_to_granso, label_to_granso,
+    target_label,
+    x0,
+    classifier_model, device,
+    print_opt, attack_config, mu0=1,
+    H0_init=None,
+    is_continue=False,
+    granso_opt_log_file=None,
+    max_iter=None
+):
+    attack_type = attack_config["attack_method"]
+    if max_iter is None:
+        max_iter = attack_config["granso_max_iter"]
+    mem_size = attack_config["granso_mem"]
+    input_constraint_type = attack_config["granso_input_constraint_type"]
+    constraint_folding_type = attack_config["granso_constraint_folding_type"]
+
+    # ==== how total violation and stationarity is determined ====
+    stat_l2 = attack_config["granso_stat_l2"]
+    steering_l1 = attack_config["granso_steering_l1"]
+    granso_slack_variable = attack_config["granso_slack_variable"]
+    wall_time = attack_config["granso_walltime"]
+    ineq_tol = attack_config["granso_ieq_tol"]
+    eq_tol = attack_config["granso_eq_tol"]
+    opt_tol = attack_config["granso_opt_tol"]
+
+    time_start = time.time()
+    sol = granso_min_target(
+        input_to_granso, label_to_granso,
+        x0=x0,
+        target_label=target_label,
+        model=classifier_model, attack_type=attack_type,
+        device=device,
+        stat_l2=stat_l2,
+        steering_l1=steering_l1,
+        max_iter=max_iter,
+        mu0=mu0,
+        ineq_tol=ineq_tol,
+        eq_tol=eq_tol, 
+        opt_tol=opt_tol,
+        input_constraint_type=input_constraint_type,
+        constraint_folding_type=constraint_folding_type,
+        granso_slack_variable=granso_slack_variable,
+        mem_size_param=mem_size,
+        print_log=print_opt,
+        H0_init=H0_init,
+        wall_time=wall_time,
+        is_continue=is_continue,
+        granso_opt_log_file=granso_opt_log_file
+    )
+    time_end = time.time()
+    print("Execution time: [%.05f]" % (time_end - time_start))
+    return sol
+
+
+
+def main(cfg, dtype=torch.double):
+    set_random_seeds(cfg)
+
+    # === Create Experiment Save Dirs ===
+    save_root = os.path.join(
+        "..", "log_folder", cfg["log_folder"]["save_root"]
+    )
+    makedir(save_root)
+    # === Experiment Name ===
+    img_start_idx, img_end_idx = cfg["curr_sample"], cfg["end_sample"]
+    exp_name = "Granso-%s_%d-%d" % (cfg["granso_params"]["distance_metric"], img_start_idx, img_end_idx)
+    ckpt_dir = os.path.join(save_root, exp_name)
+    if cfg["continue"]:  # Load or save experiment dir
+        ckpt_dir = cfg["ckpt_dir"]
+    else:
+        cfg["ckpt_dir"] = ckpt_dir
+        makedir(ckpt_dir)
+    # === Create Experiment Log File (for printing) and save the exp settings
+    log_file = create_log_info_file(ckpt_dir)
+    save_exp_info(ckpt_dir, cfg)
+    device, _ = set_default_device()  # We only need 1 gpu for this project
+
+    # === Setup the base classifier model ===
+    classifier_model, msg = build_model(
+        model_config=cfg["classifier_model"],
+        num_classes=cfg["dataset"]["num_classes"],
+        device=device
+    )
+    classifier_model = classifier_model.to(device, dtype=dtype)
+    classifier_model.eval()
+    print_and_log(msg, log_file, mode="w")
+
+    # === Setup a dataloader ===
+    _, val_loader, _ = get_loader_clean(
+        cfg, only_val=True, shuffle_val=False
+    )
+
+    # === Format to summarize the final result
+    opt_config = cfg["granso_params"]
+    attack_type = opt_config["distance_metric"]
+    result_csv_dir = os.path.join(ckpt_dir, "opt_result.csv")
+    attack_distance_key = "%s_distance" % attack_type
+    result_summary = {
+        "sample_idx": [],
+        "restart": [],
+        "true_label": [],
+        "max_logit_before_opt": [],
+        "max_logit_after_opt": [],
+        
+        attack_distance_key: [],
+        "distance_to_decision_boundary": [],
+        "box_constraint_violation": [],
+        "time": []
+    }
+
+    # === Create some variables from the cfg file for convenience in OPT settings ===
+    n_restart = opt_config["granso_n_restarts"]
+    max_iter = opt_config["granso_max_iter"]
+    init_scale = 0.1
+
+    # List to save dataset before & after optimization
+    orig_img_list, adv_img_list = [], []
+
+    # === Main OPT
+    for batch_idx, data in enumerate(val_loader):
+        if batch_idx < cfg["curr_sample"]:
+            pass  # Image not within the specified range
+        else:
+            if batch_idx >= cfg["end_sample"]:
+                break  # Completed all images specified
+            msg = "===== Testing sample [%d] =====" % batch_idx
+            print_and_log(msg, log_file)
+
+            inputs, labels = get_samples(cfg, data)
+            inputs, labels = inputs.to(device, dtype=dtype), labels.to(device) 
+            with torch.no_grad():
+                pred_logits_before = classifier_model(inputs)
+            pred_before = pred_logits_before.argmax(1)
+            pred_correct_before = (pred_before == labels).sum().item()
+
+            if pred_correct_before < 0.5:
+                msg = "Sample [%d] - prediction wrong. Skip OPT >>>"
+                print_and_log(msg, log_file)
+                result_summary["sample_idx"].append(batch_idx)
+                result_summary["true_label"].append(labels.item())
+                result_summary["max_logit_before_opt"].append(pred_before.item())
+                for key in result_summary.keys():
+                    if key not in ["sample_idx", "true_label", "max_logit_brefore_opt"]:
+                        result_summary[key].append(-100)  # Add a placeholder in the logger
+            else:
+                msg = "Sample [%d] - prediction correct. Begin PyGRANSO OPT >>>" % batch_idx
+                print_and_log(msg, log_file)
+
+                # OPT
+                granso_adv_output = {}
+                for restart_idx in range(n_restart):
+                    applied_perturbation = init_scale * (2 * torch.rand_like(inputs).to(device) - 1)
+                    x_init = (inputs + applied_perturbation).to(device, dtype=dtype)
+
+                    try:
+                        sol = execute_granso_min_target(
+                            input_to_granso, label_to_granso, None, x_init, classifier_model, device,
+                            print_opt, attack_config, max_iter=max_iter
+                        )
+                    except:
+                        msg = "  Restart [%d] OPT Failure... Return original the original inputs... " % restart_idx
+                        print_and_log(msg, log_file)
+                        x_sol = inputs.clone()
 
 
 if __name__ == "__main__":
     clear_terminal_output()
-    print("...Perform PyGRANSO min-radius-form with Lp distances ...")
+    print("Solving [Min Form] optimization with PyGRANSO.")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", dest="config", type=str,
-        default=os.path.join('config_file_examples', 'max-loss-form.json'),
-        help="Path to the json config file."
+        default=os.path.join('config_file_examples', 'min-form-fab.json'),
+        help="Path to the json config file (FAB version)."
     )
-
     args = parser.parse_args()
     cfg = load_json(args.config)  # Load Experiment Configuration file
-    assert cfg["dataset"]["batch_size"] == 1, "Only want to support batch size = 1"
-
-    default_dtype = torch.float
-    granso_dtype = torch.double
-
-    # Create Root Path to save Experiment logs
-    save_root = os.path.join("..", "log_folder")
-    root_name = cfg["log_folder"]["save_root"]
-    save_root = os.path.join(save_root, root_name)
-    makedir(save_root)
-
-    # Experiment ID
-    attack_config = cfg["test_attack"]
-    attack_type = attack_config["attack_type"]
-    assert attack_type == "PyGranso", "This script only allows PyGranso experiments. Look for other files for APGD."
-    start_sample = cfg["curr_batch"]
-    end_sample = cfg["end_batch_num"]
-
-    # Create Experiment Log Dir 
-    granso_config = cfg["granso_params"]
-    attack_metric = granso_config["distance_metric"]
-    exp_name = "GransoMin-%s-%d-%d" % (
-        attack_metric,
-        start_sample, end_sample,
-    )
-    check_point_dir = os.path.join(
-        save_root, 
-        exp_name
-    )
-    if cfg["continue"]:
-        # For continue option
-        check_point_dir = cfg["checkpoint_dir"]
-    else:
-        cfg["checkpoint_dir"] = check_point_dir
-        makedir(check_point_dir)
-
-    # Create Experiment Log File and save settings
-    log_file = create_log_info(check_point_dir)
-    save_exp_info(check_point_dir, cfg)
-    if cfg["save_vis"]:
-        vis_dir = os.path.join(
-            check_point_dir, "dataset_vis"
-        )
-        os.makedirs(vis_dir, exist_ok=True)
-    device, _ = set_default_device(cfg)
-
-    # To save sample OPT trajectory
-    granso_opt_traj_log_file = create_log_info(
-        check_point_dir, "Granso_OPT_traj.txt"
-    )
-    # Path to save the experiment summary
-    final_res_csv_dir = os.path.join(
-        check_point_dir, "min_result_log.csv"
-    )
-    final_summary = {
-        "sample_idx": [],
-        "true_label": [],
-
-        attack_metric: [],
-        "adv_loss": [],
-
-        "box_violation": [],
-        "iters": [],
-        "time": []
-    }
-
-    # === Setup Classifier Model ===
-    cls_model_config = cfg["classifier_model"]
-    classifier_model, msg = build_model(
-        model_config=cls_model_config, 
-        global_config=cfg, 
-        device=device
-    )
-    classifier_model.eval()
-    print_and_log(msg, log_file, mode="w")
-    
-    # ==== Construct the original unclipped loss for evaluation ====
-    eval_loss_func, msg = get_loss_func_eval(
-        "Margin", 
-        reduction="none", 
-        use_clip_loss=False
-    )
-
-    # some param used 
-    granso_init_scale = 0.1
-    # ==== Get Clean Data Loader ====
-    batch_size = cfg["dataset"]["batch_size"]
-    assert batch_size == 1, "PyGRANSO currently only accept batch_size = 1. (One problem at a time)"
-    _, val_loader, _ = get_loader_clean(
-        cfg, only_val=True, shuffle_val=False
-    )
-    num_classes = cfg["dataset"]["num_classes"]
-
-    # === Lists to save dataset ===
-    orig_image_list = []
-    adv_image_list = []
-
-    for batch_idx, data in enumerate(val_loader):
-        if batch_idx < cfg["curr_batch"]:
-            # Option to select image to test
-            # do nothing because these batches have been tested.
-            pass
-        else:
-            if batch_idx > (cfg["end_batch_num"]-1):
-                break
-            print_and_log(
-                "===== Testing Sample [%d] =====" % batch_idx, log_file
-            )
-            inputs, labels = get_samples(
-                cfg,
-                data_from_loader=data
-            )
-            # ==== Get samples and prepare OPT ====
-            inputs = inputs.to(device, dtype=default_dtype)
-            labels = labels.to(device)
-            classifier_model = classifier_model.to(device, dtype=default_dtype)
-            with torch.no_grad():
-                pred_logits = classifier_model(inputs)
-                pred = pred_logits.argmax(1)
-            attack_target = labels
-            pred_correct = (pred == attack_target).sum().item() > 0.5
-            
-            final_summary["sample_id"].append(batch_idx)
-
-            if not pred_correct:
-                print_and_log(
-                    "    Sample [%d] predicted wrongly. Skip RE for this sample." % batch_idx,
-                    log_file
-                )
-                # === Write Dummy values in the exp log ===
-                for key in final_summary.keys():
-                    if key not in ["sample_id"]:
-                        final_summary[key].append(-1e12)
-            else:
-                final_summary["true_label"].append(pred.item())
-                print_and_log(
-                    "    Prediction Correct, now Granso opt...",
-                    log_file
-                )
+    cfg["dataset"]["batch_size"] = 1  # PyGRANSO only wants batch_size = 1 currently
+    main(cfg, default_dtype=torch.float)  # Use double to compare with PyGRANSO
+    print("Completed")

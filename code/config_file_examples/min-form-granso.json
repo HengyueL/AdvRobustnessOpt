@@ -3,11 +3,11 @@
     "seed": 42,
     "continue": false,
     "curr_sample": 0,
-    "end_sample": 6,
+    "end_sample": 2,
     "save_vis": true,
 
     "log_folder":{
-        "save_root": "Test-Min-FAB"
+        "save_root": "Test-Min-Granso"
     },
 
     "classifier_model":{
@@ -43,7 +43,7 @@
     "fab_params":{
         "distance_metric": "Linf",
 
-        "fab_init_scale": 0.1,
+        "fab_init_scale": 0.03,
         "fab_n_restarts": 5,
         "fab_max_iter": 500
     },
