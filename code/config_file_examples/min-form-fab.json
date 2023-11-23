@@ -44,7 +44,7 @@
         "distance_metric": "Linf",
 
         "fab_init_scale": 0.1,
-        "fab_n_restarts": 5,
+        "fab_n_restarts": 2,
         "fab_max_iter": 500
     },
 

@@ -176,8 +176,11 @@ def main(cfg, dtype=torch.double):
     # === Create some variables from the cfg file for convenience in OPT settings ===
     n_restart = opt_config["granso_n_restarts"]
     max_iter = opt_config["granso_max_iter"]
-    init_scale = 0.5
-
+    if attack_type == "Linf":
+        init_scale = 0.03
+    else:
+        init_scale = 0.1
+    
     # List to save dataset before & after optimization
     orig_img_list, adv_img_list = [], []
 
@@ -218,7 +221,7 @@ def main(cfg, dtype=torch.double):
                 for restart_idx in range(n_restart):
                     applied_perturbation = init_scale * (2 * torch.rand_like(inputs).to(device) - 1)
                     x_init = (inputs + applied_perturbation).to(device, dtype=dtype)
-
+                    # x_init = init_scale * torch.rand_like(inputs).to(device, dtype=dtype)
                     t_start = time.time()
                     # try:
                     sol = execute_granso_min_target(

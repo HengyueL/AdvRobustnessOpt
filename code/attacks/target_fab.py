@@ -142,41 +142,56 @@ class FABAttackModified():
             if use_rand_start:
                 if self.norm == 'Linf':
                     t = 2 * torch.rand(x1.shape).to(self.device) - 1
+                    # x1 = im2 + (torch.min(res2,
+                    #                       self.eps * torch.ones(res2.shape)
+                    #                       .to(self.device)
+                    #                       ).reshape([-1, *[1]*self.ndims])
+                    #             ) * t / (t.reshape([t.shape[0], -1]).abs()
+                    #                      .max(dim=1, keepdim=True)[0]
+                    #                      .reshape([-1, *[1]*self.ndims])) * .5
                     x1 = im2 + (torch.min(res2,
                                           self.eps * torch.ones(res2.shape)
                                           .to(self.device)
                                           ).reshape([-1, *[1]*self.ndims])
-                                ) * t / (t.reshape([t.shape[0], -1]).abs()
-                                         .max(dim=1, keepdim=True)[0]
-                                         .reshape([-1, *[1]*self.ndims])) * .5
+                                ) * t
                     x1 = x1.clamp(0.0, 1.0)
                     diff = (x1-im2).reshape(x1.shape[0], -1)
                     diff = torch.linalg.norm(diff, ord=float("inf"), dim=1)
 
                 elif self.norm == 'L2':
                     t = torch.randn(x1.shape).to(self.device)
+                    # x1 = im2 + (torch.min(res2,
+                    #                       self.eps * torch.ones(res2.shape)
+                    #                       .to(self.device)
+                    #                       ).reshape([-1, *[1]*self.ndims])
+                    #             ) * t / ((t ** 2)
+                    #                      .view(t.shape[0], -1)
+                    #                      .sum(dim=-1)
+                    #                      .sqrt()
+                    #                      .view(t.shape[0], *[1]*self.ndims)) * .5
                     x1 = im2 + (torch.min(res2,
                                           self.eps * torch.ones(res2.shape)
                                           .to(self.device)
                                           ).reshape([-1, *[1]*self.ndims])
-                                ) * t / ((t ** 2)
-                                         .view(t.shape[0], -1)
-                                         .sum(dim=-1)
-                                         .sqrt()
-                                         .view(t.shape[0], *[1]*self.ndims)) * .5
+                                ) * t
                     x1 = x1.clamp(0.0, 1.0)
                     diff = (x1-im2).reshape(x1.shape[0], -1)
                     diff = torch.linalg.norm(diff, ord=2, dim=1)
 
                 elif self.norm == 'L1':
                     t = torch.randn(x1.shape).to(self.device)
+                    # x1 = im2 + (torch.min(res2,
+                    #                       self.eps * torch.ones(res2.shape)
+                    #                       .to(self.device)
+                    #                       ).reshape([-1, *[1]*self.ndims])
+                    #             ) * t / (t.abs().view(t.shape[0], -1)
+                    #                      .sum(dim=-1)
+                    #                      .view(t.shape[0], *[1]*self.ndims)) / 2
                     x1 = im2 + (torch.min(res2,
                                           self.eps * torch.ones(res2.shape)
                                           .to(self.device)
                                           ).reshape([-1, *[1]*self.ndims])
-                                ) * t / (t.abs().view(t.shape[0], -1)
-                                         .sum(dim=-1)
-                                         .view(t.shape[0], *[1]*self.ndims)) / 2
+                                ) * t
                     x1 = x1.clamp(0.0, 1.0)
                     diff = (x1-im2).reshape(x1.shape[0], -1)
                     diff = torch.linalg.norm(diff, ord=1, dim=1)
