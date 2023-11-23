@@ -92,7 +92,6 @@ def execute_granso_min_target(
     # ==== how total violation and stationarity is determined ====
     stat_l2 = attack_config["granso_stat_l2"]
     steering_l1 = attack_config["granso_steering_l1"]
-    wall_time = attack_config["granso_walltime"]
     ineq_tol = attack_config["granso_ieq_tol"]
     eq_tol = attack_config["granso_eq_tol"]
     opt_tol = attack_config["granso_opt_tol"]
@@ -110,8 +109,7 @@ def execute_granso_min_target(
         opt_tol=opt_tol,
         mem_size_param=mem_size,
         print_log=print_opt,
-        H0_init=H0_init,
-        wall_time=wall_time
+        H0_init=H0_init
     )
     time_end = time.time()
     print("Execution time: [%.05f]" % (time_end - time_start))
@@ -178,7 +176,7 @@ def main(cfg, dtype=torch.double):
     # === Create some variables from the cfg file for convenience in OPT settings ===
     n_restart = opt_config["granso_n_restarts"]
     max_iter = opt_config["granso_max_iter"]
-    init_scale = 0.1
+    init_scale = 0.5
 
     # List to save dataset before & after optimization
     orig_img_list, adv_img_list = [], []
@@ -222,22 +220,23 @@ def main(cfg, dtype=torch.double):
                     x_init = (inputs + applied_perturbation).to(device, dtype=dtype)
 
                     t_start = time.time()
-                    try:
-                        sol = execute_granso_min_target(
-                            inputs, labels, None, x_init, classifier_model, device,
-                            attack_config=cfg["granso_params"], max_iter=max_iter
-                        )
-                        x_sol = get_granso_adv_output(
-                            sol, attack_type, inputs
-                        )
-                        termination_code = sol.termination_code
-                    except:
-                        msg = "  Restart [%d] OPT Failure... Return original the original inputs... " % restart_idx
-                        print_and_log(msg, log_file)
-                        x_sol = get_granso_adv_output(
-                            sol, attack_type, inputs
-                        )
-                        termination_code = -100
+                    # try:
+                    sol = execute_granso_min_target(
+                        inputs, labels, None, x_init, classifier_model, device,
+                        attack_config=cfg["granso_params"], max_iter=max_iter
+                    )
+                    x_sol = get_granso_adv_output(
+                        sol, attack_type, inputs
+                    )
+                    termination_code = sol.termination_code
+                    # except:
+                    #     msg = "  Restart [%d] OPT Failure... Return original the original inputs... " % restart_idx
+                    #     print_and_log(msg, log_file)
+                    #     sol = None
+                    #     x_sol = get_granso_adv_output(
+                    #         sol, attack_type, inputs
+                    #     )
+                    #     termination_code = -100
                     t_end = time.time()
                     granso_adv_output[restart_idx] = x_sol
                     time_dict[restart_idx] = t_end - t_start
@@ -282,11 +281,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", dest="config", type=str,
-        default=os.path.join('config_file_examples', 'min-form-fab.json'),
+        default=os.path.join('config_file_examples', 'min-form-granso.json'),
         help="Path to the json config file (FAB version)."
     )
     args = parser.parse_args()
     cfg = load_json(args.config)  # Load Experiment Configuration file
     cfg["dataset"]["batch_size"] = 1  # PyGRANSO only wants batch_size = 1 currently
-    main(cfg, default_dtype=torch.float)  # Use double to compare with PyGRANSO
+    main(cfg)  # Use double to compare with PyGRANSO
     print("Completed")

@@ -2,7 +2,7 @@
 {   
     "seed": 42,
     "continue": false,
-    "curr_sample": 0,
+    "curr_sample": 1,
     "end_sample": 2,
     "save_vis": true,
 
@@ -49,16 +49,16 @@
     },
 
     "granso_params": {
-        "distance_metric": "L2",
+        "distance_metric": "L1",
         "attack_bound": 0.5,
         
         "granso_early_max_iter": 20,
-        "granso_max_iter": 200,
+        "granso_max_iter": 100,
         "granso_early_feasibility_thres": 0.01,
-        "granso_n_restarts": 3,
+        "granso_n_restarts": 2,
 
         "granso_mu0": 1,
-        "granso_mem": 10,
+        "granso_mem": 5,
         "granso_stat_l2": false,
         "granso_steering_l1": false,
 

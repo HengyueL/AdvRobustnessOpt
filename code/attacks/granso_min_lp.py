@@ -92,13 +92,16 @@ def granso_min(
         # ==== For exact warm restart, need to turn off scaling
         opts.scaleH0 = False
     else:
+        # ==== Init t based on x0 and x(input) ====
+        init_err = torch.abs(x0 - inputs)
         # if not is_continue:
         if attack_type in ["Linf"]:
-            t = 0.1 * torch.rand([1, 1]).to(device, dtype=dtype)
+            t = torch.ones([1, 1]).to(device, dtype=dtype) * torch.amax(init_err)
             opts.x0 = torch.cat([opts.x0, t], dim=0)
             print("Check Init scaling [t]", torch.linalg.vector_norm(t.reshape(-1), ord=float("inf")).item())
         elif attack_type in ["L1"]:
-            t = 0.1 * torch.rand_like(opts.x0).to(device, dtype=dtype)
+            # t = torch.ones_like(opts.x0).to(device, dtype=dtype) * init_err.clone().reshape(-1, 1)
+            t = torch.rand_like(opts.x0).to(device, dtype=dtype)
             opts.x0 = torch.cat([opts.x0, t], dim=0)
             print("Check Init scaling [t]", torch.linalg.vector_norm(t.reshape(-1), ord=1).item())
         
@@ -137,14 +140,13 @@ def user_fn_min_separate_constraint(
     # normalizing factor, to keep the condition number of the objective roughly the same w.r.t different lp norms.
     num_pixels = torch.as_tensor(np.prod(adv_inputs.shape))
     normalization_factor_f = num_pixels**0.5
-    # normalization_factor = 1
 
     # objective
     if attack_type == 'L2':
         f = torch.linalg.vector_norm(delta_vec, ord=2)
     elif attack_type == 'L1':
-        t_vec = t.reshape(-1) / normalization_factor_f
-        f = torch.sum(F.relu(t_vec))
+        t_vec = t.reshape(-1)
+        f = torch.sum(F.relu(t_vec)) / normalization_factor_f
     elif attack_type == 'Linf':
         f = F.relu(t) * normalization_factor_f
     elif attack_type == "Linf-Orig":
@@ -194,24 +196,30 @@ def user_fn_min_separate_constraint(
 
             # == Normalization to roughly comparable condition number ==
             constr_number = torch.where(err_vec > 0, 1, 0)
-            normalization_factor = constr_number.sum()
+            normalization_factor = constr_number.sum() + 1e-12
 
         elif attack_type == "L1":
             err_vec = torch.abs(delta_vec) - F.relu(t_vec)
-
+            # err_vec = torch.hstack(
+            #     (delta_vec - F.relu(t_vec),   # delta_vec = x' - x - relu(t_vec)
+            #     -delta_vec - F.relu(t_vec))
+            # )
+            
             t_vec_constr = torch.clamp((-1) * t_vec, min=0)
             constr_number_c3 = torch.where(t_vec_constr > 0, 1, 0)
-            factor = constr_number.sum(constr_number_c3)
-            ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) / (factor**0.5)  # t_vec > 0
+            factor = constr_number_c3.sum()
+            ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) / (factor**0.5 + 1e-12)  # t_vec > 0
+            # ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) # t_vec > 0
 
             # == Normalization to roughly comparable condition number ==
             constr_number = torch.where(err_vec > 0, 1, 0)
-            normalization_factor = constr_number.sum(constr_number)
+            normalization_factor = constr_number.sum()
 
         constr_vec = torch.clamp(err_vec, min=0)
         folded_constr = torch.linalg.vector_norm(constr_vec.reshape(-1), ord=2)
-        ci.c4 = folded_constr / (normalization_factor ** 0.5)
-    
+        # ci.c4 = folded_constr / (normalization_factor ** 0.5 + 1e-12)
+        ci.c4 = folded_constr
+
     return [f,ci,ce]
 
 if __name__ == "__main__":
