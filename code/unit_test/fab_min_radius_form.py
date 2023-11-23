@@ -43,7 +43,7 @@ def calc_min_dist_sample_fab(
         attacked_label = pred_clone.argmax(1).item()
         distance_to_boundary = attacked_logit - true_label_logit
         boundary_distance_dict[key] = distance_to_boundary
-        attacked_label_dict[key] = attacked_label
+        # attacked_label_dict[key] = attacked_label
         if distance_to_boundary < best_boundary_distance:
             best_boundary_distance = distance_to_boundary
             best_key = key
@@ -71,6 +71,10 @@ def calc_min_dist_sample_fab(
             p_distance = (torch.sum(err_vec**p_norm, dim=1)**(1/p_norm)).cpu().item()
         
         fab_distance_dict[key] = p_distance
+        if p_distance > 1e-6:
+            attacked_label_dict[key] = attacked_label
+        else:
+            attacked_label_dict[key] = target_label  # FAB failure
         msg = "  >> Restart [%d] has  - radius [%.04f] - boundary distance [%.04f] - box violations [%d] >> " % (
             key, p_distance, distance_to_boundary, num_violation
         )
