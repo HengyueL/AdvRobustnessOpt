@@ -96,13 +96,11 @@ def granso_min(
         init_err = torch.abs(x0 - inputs)
         # if not is_continue:
         if attack_type in ["Linf"]:
-            # t = torch.ones([1, 1]).to(device, dtype=dtype) * torch.amax(init_err)
-            t = 0.05 * torch.rand([1, 1]).to(device, dtype=dtype)
+            t = 0.1 * torch.rand([1, 1]).to(device, dtype=dtype)
             opts.x0 = torch.cat([opts.x0, t], dim=0)
             print("Check Init scaling [t]", torch.linalg.vector_norm(t.reshape(-1), ord=float("inf")).item())
         elif attack_type in ["L1"]:
-            # t = torch.ones_like(opts.x0).to(device, dtype=dtype) * init_err.clone().reshape(-1, 1)
-            t = 0.1 * torch.rand_like(opts.x0).to(device, dtype=dtype)
+            t = 1 * torch.rand_like(opts.x0).to(device, dtype=dtype)
             opts.x0 = torch.cat([opts.x0, t], dim=0)
             print("Check Init scaling [t]", torch.linalg.vector_norm(t.reshape(-1), ord=1).item())
         
