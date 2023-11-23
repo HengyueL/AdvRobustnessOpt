@@ -6,3 +6,5 @@ models/__pycache__/
 percept_utils/__pycache__/
 utils/__pycache__/
 unit_test/__pycache__/
+slurm_files/
+config_files_msi/
