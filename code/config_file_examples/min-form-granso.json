@@ -2,7 +2,7 @@
 {   
     "seed": 42,
     "continue": false,
-    "curr_sample": 1,
+    "curr_sample": 0,
     "end_sample": 2,
     "save_vis": true,
 
@@ -49,11 +49,11 @@
     },
 
     "granso_params": {
-        "distance_metric": "L1",
+        "distance_metric": "Linf",
         "attack_bound": 0.5,
         
         "granso_early_max_iter": 20,
-        "granso_max_iter": 100,
+        "granso_max_iter": 500,
         "granso_early_feasibility_thres": 0.01,
         "granso_n_restarts": 2,
 
