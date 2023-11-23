@@ -3,7 +3,7 @@
     "seed": 42,
     "continue": false,
     "curr_sample": 0,
-    "end_sample": 6,
+    "end_sample": 5,
     "save_vis": true,
 
     "log_folder":{
@@ -23,7 +23,7 @@
 
         "input_size": 32,
         "workers": 0,
-        "dataset_path": "C:\\Users\\Liang\\dataset\\Cifar10\\Clean",
+        "dataset_path": "E:\\Dataset\\cifar10\\clean",
         "train_transform": "default"
 
     },
@@ -41,7 +41,7 @@
     },
 
     "fab_params":{
-        "distance_metric": "Linf",
+        "distance_metric": "L1",
 
         "fab_init_scale": 0.1,
         "fab_n_restarts": 2,
