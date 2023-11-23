@@ -199,17 +199,17 @@ def user_fn_min_separate_constraint(
             normalization_factor = constr_number.sum() + 1e-12
 
         elif attack_type == "L1":
-            err_vec = torch.abs(delta_vec) - F.relu(t_vec)
-            # err_vec = torch.hstack(
-            #     (delta_vec - F.relu(t_vec),   # delta_vec = x' - x - relu(t_vec)
-            #     -delta_vec - F.relu(t_vec))
-            # )
+            # err_vec = torch.abs(delta_vec) - F.relu(t_vec)
+            err_vec = torch.hstack(
+                (delta_vec - F.relu(t_vec),   # delta_vec = x' - x - relu(t_vec)
+                -delta_vec - F.relu(t_vec))
+            )
             
             t_vec_constr = torch.clamp((-1) * t_vec, min=0)
             constr_number_c3 = torch.where(t_vec_constr > 0, 1, 0)
             factor = constr_number_c3.sum()
-            ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) / (factor**0.5 + 1e-12)  # t_vec > 0
-            # ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) # t_vec > 0
+            # ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) / (factor**0.5 + 1e-12)  # t_vec > 0
+            ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) # t_vec > 0
 
             # == Normalization to roughly comparable condition number ==
             constr_number = torch.where(err_vec > 0, 1, 0)
