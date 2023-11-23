@@ -9,46 +9,98 @@ from utils.build import build_model, get_loss_func_eval, get_loader_clean
 from config_setups.config_log_setup import clear_terminal_output, create_log_info_file,\
     makedir, save_dict_to_csv, save_exp_info, set_default_device, set_random_seeds
     
-from utils.general import load_json, print_and_log, save_image, tensor2img, get_samples
-from attacks.target_fab import FABAttackPTModified
-import numpy as np
+from utils.general import load_json, print_and_log, get_samples, get_granso_adv_output
+from attacks.granso_min_lp import granso_min
 
+
+def calc_min_dist_sample(
+    adv_output_dict,  # A dict of fab results
+    orig_input, 
+    attack_type,  
+    model, 
+    target_label,
+    log_file
+):
+    keys = adv_output_dict.keys()
+
+    radius_dict = {}
+    boundary_distance_dict = {}
+    box_violation_dict = {}
+    attacked_label_dict = {}
+
+    best_boundary_distance, best_key = float("inf"), None
+
+    for key in keys:
+        adv_output = adv_output_dict[key]
+        # Check Result 
+        with torch.no_grad():
+            pred = model(adv_output)
+            true_label_logit = pred[0, target_label].item()
+
+        pred_clone = pred.clone()
+        pred_clone[0, target_label] = -1e12
+        attacked_logit = torch.amax(pred_clone).item()
+        attacked_label = pred_clone.argmax(1).item()
+        distance_to_boundary = attacked_logit - true_label_logit
+        boundary_distance_dict[key] = distance_to_boundary
+        attacked_label_dict[key] = attacked_label
+        if distance_to_boundary < best_boundary_distance:
+            best_boundary_distance = distance_to_boundary
+            best_key = key
+
+        adv_output = adv_output.clone().reshape(1, -1)
+        orig_input = orig_input.clone().reshape(1, -1)
+        # Check [0, 1] box constraint
+        greater_than_1 = torch.sum(torch.where(adv_output > (1 + 1e-4), 1, 0)).item()
+        smaller_than_0 = torch.sum(torch.where(adv_output < (0 - 1e-4), 1, 0)).item()
+        num_violation = greater_than_1 + smaller_than_0
+        box_violation_dict[key] = num_violation
+        
+        err_vec = torch.abs(adv_output - orig_input)
+        assert "L" in attack_type, "Norm character partition incorrect"
+
+        if attack_type == "L1-Reform":
+            attack_key_word = "L1"
+        else:
+            attack_key_word = attack_type
+        p_norm = attack_key_word.split("L")[-1]
+        if p_norm == "inf":
+            p_distance = torch.amax(err_vec, dim=1).cpu().item()
+        else:
+            p_norm = float(p_norm)
+            p_distance = (torch.sum(err_vec**p_norm, dim=1)**(1/p_norm)).cpu().item()
+        
+        radius_dict[key] = p_distance
+        msg = "  >> Restart [%d] has  - radius [%.04f] - boundary distance [%.04f] - box violations [%d] >> " % (
+            key, p_distance, distance_to_boundary, num_violation
+        )
+        print_and_log(msg, log_file)
+
+    return radius_dict, boundary_distance_dict, box_violation_dict, attacked_label_dict, best_key
 
 
 def execute_granso_min_target(
-    input_to_granso, label_to_granso,
-    target_label,
-    x0,
-    classifier_model, device,
-    print_opt, attack_config, mu0=1,
-    H0_init=None,
-    is_continue=False,
-    granso_opt_log_file=None,
-    max_iter=None
+    input_to_granso, label_to_granso, target_label, x0,
+    classifier_model, device, attack_config, 
+    mu0=1, H0_init=None, max_iter=None, print_opt=True
 ):
-    attack_type = attack_config["attack_method"]
+    attack_type = attack_config["distance_metric"]
     if max_iter is None:
         max_iter = attack_config["granso_max_iter"]
     mem_size = attack_config["granso_mem"]
-    input_constraint_type = attack_config["granso_input_constraint_type"]
-    constraint_folding_type = attack_config["granso_constraint_folding_type"]
 
     # ==== how total violation and stationarity is determined ====
     stat_l2 = attack_config["granso_stat_l2"]
     steering_l1 = attack_config["granso_steering_l1"]
-    granso_slack_variable = attack_config["granso_slack_variable"]
     wall_time = attack_config["granso_walltime"]
     ineq_tol = attack_config["granso_ieq_tol"]
     eq_tol = attack_config["granso_eq_tol"]
     opt_tol = attack_config["granso_opt_tol"]
 
     time_start = time.time()
-    sol = granso_min_target(
-        input_to_granso, label_to_granso,
-        x0=x0,
-        target_label=target_label,
-        model=classifier_model, attack_type=attack_type,
-        device=device,
+    sol = granso_min(
+        input_to_granso, label_to_granso, x0=x0, target_label=target_label,
+        model=classifier_model, attack_type=attack_type, device=device,
         stat_l2=stat_l2,
         steering_l1=steering_l1,
         max_iter=max_iter,
@@ -56,15 +108,10 @@ def execute_granso_min_target(
         ineq_tol=ineq_tol,
         eq_tol=eq_tol, 
         opt_tol=opt_tol,
-        input_constraint_type=input_constraint_type,
-        constraint_folding_type=constraint_folding_type,
-        granso_slack_variable=granso_slack_variable,
         mem_size_param=mem_size,
         print_log=print_opt,
         H0_init=H0_init,
-        wall_time=wall_time,
-        is_continue=is_continue,
-        granso_opt_log_file=granso_opt_log_file
+        wall_time=wall_time
     )
     time_end = time.time()
     print("Execution time: [%.05f]" % (time_end - time_start))
@@ -124,7 +171,8 @@ def main(cfg, dtype=torch.double):
         attack_distance_key: [],
         "distance_to_decision_boundary": [],
         "box_constraint_violation": [],
-        "time": []
+        "time": [],
+        "termination_code": []
     }
 
     # === Create some variables from the cfg file for convenience in OPT settings ===
@@ -167,19 +215,65 @@ def main(cfg, dtype=torch.double):
 
                 # OPT
                 granso_adv_output = {}
+                termination_code_dict = {}
+                time_dict = {}
                 for restart_idx in range(n_restart):
                     applied_perturbation = init_scale * (2 * torch.rand_like(inputs).to(device) - 1)
                     x_init = (inputs + applied_perturbation).to(device, dtype=dtype)
 
+                    t_start = time.time()
                     try:
                         sol = execute_granso_min_target(
-                            input_to_granso, label_to_granso, None, x_init, classifier_model, device,
-                            print_opt, attack_config, max_iter=max_iter
+                            inputs, labels, None, x_init, classifier_model, device,
+                            attack_config=cfg["granso_params"], max_iter=max_iter
                         )
+                        x_sol = get_granso_adv_output(
+                            sol, attack_type, inputs
+                        )
+                        termination_code = sol.termination_code
                     except:
                         msg = "  Restart [%d] OPT Failure... Return original the original inputs... " % restart_idx
                         print_and_log(msg, log_file)
-                        x_sol = inputs.clone()
+                        x_sol = get_granso_adv_output(
+                            sol, attack_type, inputs
+                        )
+                        termination_code = -100
+                    t_end = time.time()
+                    granso_adv_output[restart_idx] = x_sol
+                    time_dict[restart_idx] = t_end - t_start
+                    termination_code_dict[restart_idx] = termination_code
+
+                radius_dict, boundary_distance_dict, box_violation_dict, attacked_label_dict, best_key = calc_min_dist_sample(
+                    granso_adv_output, inputs, attack_type, classifier_model, labels.item(), log_file
+                )
+                # === Log the best result ===
+                for key in granso_adv_output.keys():
+                    result_summary["sample_idx"].append(batch_idx)
+                    result_summary["restart"].append(key)
+                    result_summary["true_label"].append(labels.item())
+                    result_summary["max_logit_before_opt"].append(pred_before.item())
+                    result_summary[attack_distance_key].append(radius_dict[key])
+                    result_summary["max_logit_after_opt"].append(attacked_label_dict[key])
+                    result_summary["distance_to_decision_boundary"].append(boundary_distance_dict[key])
+                    result_summary["box_constraint_violation"].append(box_violation_dict[key])
+                    result_summary["time"].append(time_dict[key])
+                    result_summary["termination_code"].append(termination_code_dict[key])
+            save_dict_to_csv(
+                result_summary, result_csv_dir
+            )
+
+            if cfg["save_vis"]:
+                vis_dir = os.path.join(ckpt_dir, "dataset_vis")
+                makedir(vis_dir)
+                orig_save_name, adv_save_name = os.path.join(vis_dir, "orig_imgs.npy"), os.path.join(vis_dir, "adv_imgs.npy")
+
+                orig_img_np = inputs.detach().cpu().numpy()[0, :, :, :]
+                orig_img_list.append(orig_img_np)
+                adv_img_np = granso_adv_output[best_key].detach().cpu().numpy()[0, :, :, :]
+                adv_img_list.append(adv_img_np)
+
+                np.save(orig_save_name, np.asarray(orig_img_list))
+                np.save(adv_save_name, np.asarray(adv_img_list))
 
 
 if __name__ == "__main__":

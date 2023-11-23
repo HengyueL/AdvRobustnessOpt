@@ -5,13 +5,13 @@ sys.path.append(dir_path)
 import argparse, os, torch, time
 import numpy as np
 # ===========
-from utils.build import build_model, get_loss_func_eval, get_loader_clean
+from utils.build import build_model, get_loader_clean
 from config_setups.config_log_setup import clear_terminal_output, create_log_info_file,\
     makedir, save_dict_to_csv, save_exp_info, set_default_device, set_random_seeds
     
-from utils.general import load_json, print_and_log, save_image, tensor2img, get_samples
+from utils.general import load_json, print_and_log, get_samples
 from attacks.target_fab import FABAttackPTModified
-import numpy as np
+
 
 def calc_min_dist_sample_fab(
     fab_adv_output,  # A dict of fab results

@@ -23,7 +23,7 @@
 
         "input_size": 32,
         "workers": 0,
-        "dataset_path": "C:\\Users\\Liang\\dataset\\Cifar10\\Clean",
+        "dataset_path": "E:\\Dataset\\cifar10\\clean",
         "train_transform": "default"
 
     },
@@ -53,17 +53,10 @@
         "attack_bound": 0.5,
         
         "granso_early_max_iter": 20,
-        "granso_max_iter": 400,
+        "granso_max_iter": 200,
         "granso_early_feasibility_thres": 0.01,
-        "granso_n_restarts": 5,
+        "granso_n_restarts": 3,
 
-        "granso_loss": {
-            "type": "Margin",
-            "reduction": "sum",
-            "use_clip_loss": true
-        },
-
-        "granso_input_constraint_type": "L2-folding",
         "granso_mu0": 1,
         "granso_mem": 10,
         "granso_stat_l2": false,
@@ -71,7 +64,13 @@
 
         "granso_eq_tol": 1e-4,
         "granso_ieq_tol": 1e-4,
-        "granso_opt_tol": 1e-4
+        "granso_opt_tol": 1e-4,
+
+        "granso_loss": {
+            "type": "Margin",
+            "reduction": "sum",
+            "use_clip_loss": true
+        }
     },
 
     "comment": {

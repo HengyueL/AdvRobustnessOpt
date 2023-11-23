@@ -9,7 +9,7 @@ from pygranso.pygransoStruct import pygransoStruct
 
 # ==== Target Min =====
 def granso_min(
-    inputs, labels,x0,target_label,
+    inputs, labels, x0, target_label,
     model, attack_type, device,
     max_iter=1000,
     ineq_tol=1e-8,
@@ -136,21 +136,21 @@ def user_fn_min_separate_constraint(
 
     # normalizing factor, to keep the condition number of the objective roughly the same w.r.t different lp norms.
     num_pixels = torch.as_tensor(np.prod(adv_inputs.shape))
-    normalization_factor = num_pixels**0.5
+    normalization_factor_f = num_pixels**0.5
     # normalization_factor = 1
 
     # objective
     if attack_type == 'L2':
         f = torch.linalg.vector_norm(delta_vec, ord=2)
     elif attack_type == 'L1':
-        t_vec = t.reshape(-1) / normalization_factor
+        t_vec = t.reshape(-1) / normalization_factor_f
         f = torch.sum(F.relu(t_vec))
     elif attack_type == 'Linf':
-        f = F.relu(t) * normalization_factor
+        f = F.relu(t) * normalization_factor_f
     elif attack_type == "Linf-Orig":
-        f = torch.linalg.vector_norm(delta_vec, ord=float("inf"))
+        f = torch.linalg.vector_norm(delta_vec, ord=float("inf")) * normalization_factor_f
     elif attack_type == "L1-Orig":
-        f = torch.linalg.vector_norm(delta_vec, ord=1) / normalization_factor
+        f = torch.linalg.vector_norm(delta_vec, ord=1) / normalization_factor_f
     else:
         # General Lp norm
         order_number = float(attack_type.split("L")[-1])
@@ -198,8 +198,8 @@ def user_fn_min_separate_constraint(
 
         elif attack_type == "L1":
             err_vec = torch.abs(delta_vec) - F.relu(t_vec)
-            t_vec_constr = torch.clamp((-1) * t_vec, min=0)
 
+            t_vec_constr = torch.clamp((-1) * t_vec, min=0)
             constr_number_c3 = torch.where(t_vec_constr > 0, 1, 0)
             factor = constr_number.sum(constr_number_c3)
             ci.c3 = torch.linalg.vector_norm(t_vec_constr.reshape(-1), ord=2) / (factor**0.5)  # t_vec > 0
