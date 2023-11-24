@@ -28,7 +28,7 @@ def calc_min_dist_sample_fab(
     box_violation_dict = {}
     attacked_label_dict = {}
 
-    best_boundary_distance, best_key = float("inf"), None
+    best_radius, best_key = float("inf"), None
 
     for key in keys:
         fab_output = fab_adv_output[key]
@@ -43,11 +43,7 @@ def calc_min_dist_sample_fab(
         attacked_label = pred_clone.argmax(1).item()
         distance_to_boundary = attacked_logit - true_label_logit
         boundary_distance_dict[key] = distance_to_boundary
-        # attacked_label_dict[key] = attacked_label
-        if distance_to_boundary < best_boundary_distance:
-            best_boundary_distance = distance_to_boundary
-            best_key = key
-
+        
         fab_output = fab_output.clone().reshape(1, -1)
         orig_input = orig_input.clone().reshape(1, -1)
         # Check [0, 1] box constraint
@@ -75,6 +71,11 @@ def calc_min_dist_sample_fab(
             attacked_label_dict[key] = attacked_label
         else:
             attacked_label_dict[key] = target_label  # FAB failure
+
+        if p_distance < best_radius and distance_to_boundary > -1e-4:
+            best_radius = p_distance
+            best_key = key
+
         msg = "  >> Restart [%d] has  - radius [%.04f] - boundary distance [%.04f] - box violations [%d] >> " % (
             key, p_distance, distance_to_boundary, num_violation
         )
@@ -137,7 +138,8 @@ def main(cfg, default_dtype=torch.double):
         attack_distance_key: [],
         "distance_to_decision_boundary": [],
         "box_constraint_violation": [],
-        "time": []
+        "time": [],
+        "best_iter": []
     }
 
     # === Create some variables from the cfg file
@@ -177,7 +179,7 @@ def main(cfg, default_dtype=torch.double):
                 result_summary["true_label"].append(labels.item())
                 result_summary["max_logit_before_opt"].append(pred_before.item())
                 for key in result_summary.keys():
-                    if key not in ["sample_idx", "true_label", "max_logit_brefore_opt"]:
+                    if key not in ["sample_idx", "true_label", "max_logit_before_opt"]:
                         result_summary[key].append(-100)  # Add a placeholder in the logger
             else:
                 msg = "Sample [%d] - prediction correct. Begin FAB OPT >>>" % batch_idx
@@ -185,7 +187,7 @@ def main(cfg, default_dtype=torch.double):
                 
                 # OPT
                 fab_time_start = time.time()
-                fab_adv_output = fab_opt_runner.perturb(
+                fab_adv_output, fab_best_iter_dict = fab_opt_runner.perturb(
                     inputs, labels
                 )
                 fab_time_end = time.time()
@@ -196,16 +198,18 @@ def main(cfg, default_dtype=torch.double):
                     fab_adv_output, inputs, attack_type, classifier_model, labels.item(), log_file
                 )
                 # === Log the best result ===
-                for key in fab_adv_output.keys():
-                    result_summary["sample_idx"].append(batch_idx)
-                    result_summary["restart"].append(key)
-                    result_summary["true_label"].append(labels.item())
-                    result_summary["max_logit_before_opt"].append(pred_before.item())
-                    result_summary[attack_distance_key].append(distance_dict[key])
-                    result_summary["max_logit_after_opt"].append(attacked_label_dict[key])
-                    result_summary["distance_to_decision_boundary"].append(boundary_distance_dict[key])
-                    result_summary["box_constraint_violation"].append(box_violation_dict[key])
-                    result_summary["time"].append(fab_time)
+                # for key in fab_adv_output.keys():
+                key = best_key
+                result_summary["sample_idx"].append(batch_idx)
+                result_summary["restart"].append(key)
+                result_summary["true_label"].append(labels.item())
+                result_summary["max_logit_before_opt"].append(pred_before.item())
+                result_summary[attack_distance_key].append(distance_dict[key])
+                result_summary["max_logit_after_opt"].append(attacked_label_dict[key])
+                result_summary["distance_to_decision_boundary"].append(boundary_distance_dict[key])
+                result_summary["box_constraint_violation"].append(box_violation_dict[key])
+                result_summary["time"].append(fab_time)
+                result_summary["best_iter"].append(fab_best_iter_dict[key])
 
             save_dict_to_csv(
                 result_summary, result_csv_dir

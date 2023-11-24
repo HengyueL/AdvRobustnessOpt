@@ -3,11 +3,11 @@
     "seed": 42,
     "continue": false,
     "curr_sample": 0,
-    "end_sample": 5,
+    "end_sample": 100,
     "save_vis": true,
 
     "log_folder":{
-        "save_root": "Test-Min-FAB"
+        "save_root": "Min-FAB-CIFAR-L2"
     },
 
     "classifier_model":{
@@ -23,55 +23,17 @@
 
         "input_size": 32,
         "workers": 0,
-        "dataset_path": "E:\\Dataset\\cifar10\\clean",
+        "dataset_path": "C:\\Users\\Liang\\dataset\\Cifar10\\Clean",
         "train_transform": "default"
 
     },
 
-    "test_attack": {
-        "attack_type": "FAB"
-    },
-
-    "apgd_params":{
-        "distance_metric": "L2",
-        "attack_bound": 0.5,
-
-        "apgd_n_restarts": 5,
-        "apgd_max_iter": 500
-    },
-
     "fab_params":{
-        "distance_metric": "L1",
+        "distance_metric": "L2",
 
         "fab_init_scale": 0.1,
-        "fab_n_restarts": 2,
-        "fab_max_iter": 500
-    },
-
-    "granso_params": {
-        "distance_metric": "L2",
-        "attack_bound": 0.5,
-        
-        "granso_early_max_iter": 20,
-        "granso_max_iter": 400,
-        "granso_early_feasibility_thres": 0.01,
-        "granso_n_restarts": 5,
-
-        "granso_loss": {
-            "type": "Margin",
-            "reduction": "sum",
-            "use_clip_loss": true
-        },
-
-        "granso_input_constraint_type": "L2-folding",
-        "granso_mu0": 1,
-        "granso_mem": 10,
-        "granso_stat_l2": false,
-        "granso_steering_l1": false,
-
-        "granso_eq_tol": 1e-4,
-        "granso_ieq_tol": 1e-4,
-        "granso_opt_tol": 1e-4
+        "fab_n_restarts": 10,
+        "fab_max_iter": 3000
     },
 
     "comment": {

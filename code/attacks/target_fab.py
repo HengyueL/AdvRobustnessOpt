@@ -342,10 +342,11 @@ class FABAttackModified():
         ind_succ = self.check_shape(ind_succ.nonzero().squeeze())
         adv_c[pred[ind_succ]] = adv[ind_succ].clone()
 
-        return adv_c
+        return adv_c, best_iter
 
     def perturb(self, x, y, target_class=None):
         final_res = {}
+        final_iter = {}
 
         if self.device is None:
             self.device = x.device
@@ -369,7 +370,7 @@ class FABAttackModified():
                     if ind_to_fool.numel() != 0:
                         x_to_fool, y_to_fool = x[ind_to_fool].clone(), y[ind_to_fool].clone()
                         # print("Perform attack on samples: ", x_to_fool.shape)
-                        adv_curr = self.attack_single_run(x_to_fool, y_to_fool, use_rand_start=(counter > 0), is_targeted=False)
+                        adv_curr, best_iter = self.attack_single_run(x_to_fool, y_to_fool, use_rand_start=(counter > 0), is_targeted=False)
 
                         # ==== The following modifications are made to return all adv samples
                         # ==== Without checking the eps and classified correct 
@@ -401,8 +402,10 @@ class FABAttackModified():
                         #     adv[sample_idx, :, :, :] = adv_curr[i, :, :, :]
                         adv[ind_to_fool, :, :, :] = adv_curr.clone()
                         final_res[counter] = adv.clone()
+                        final_iter[counter] = best_iter
                     else:
                         final_res[counter] = x.clone()
+                        final_iter[counter] = 1e12
                     # print("Result shape: ", final_res[counter].shape)
             else:
                 assert target_class is not None, "Need to specify a target class"
@@ -412,7 +415,7 @@ class FABAttackModified():
                     if len(ind_to_fool.shape) == 0: ind_to_fool = ind_to_fool.unsqueeze(0)
                     if ind_to_fool.numel() != 0:
                         x_to_fool, y_to_fool = x[ind_to_fool].clone(), y[ind_to_fool].clone()
-                        adv_curr = self.attack_single_run(
+                        adv_curr, best_iter = self.attack_single_run(
                             x_to_fool, y_to_fool, use_rand_start=(counter > 0), 
                             is_targeted=True, target_class=target_class)
 
@@ -442,9 +445,11 @@ class FABAttackModified():
                         adv = x.clone()
                         adv[ind_to_fool, :, :, :] = adv_curr.clone()
                         final_res[counter] = adv.clone()
+                        final_iter[counter] = best_iter
                     else:
                         final_res[counter] = x.clone()
-        return final_res
+                        final_iter[counter] = 1e12
+        return final_res, final_iter
 
 
 class FABAttackPTModified(FABAttackModified):
