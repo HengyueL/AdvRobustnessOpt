@@ -184,7 +184,6 @@ def main(cfg, dtype=torch.double):
 
     # === Create some variables from the cfg file for convenience in OPT settings ===
     n_restart = opt_config["granso_n_restarts"]
-    max_iter = opt_config["granso_max_iter"]
     es_iter = 50
     if attack_type == "Linf":
         init_scale = 0.03
@@ -212,13 +211,13 @@ def main(cfg, dtype=torch.double):
             pred_correct_before = (pred_before == labels).sum().item()
 
             if pred_correct_before < 0.5:
-                msg = "Sample [%d] - prediction wrong. Skip OPT >>>"
+                msg = "Sample [%d] - prediction wrong. Skip OPT >>>" % batch_idx
                 print_and_log(msg, log_file)
                 result_summary["sample_idx"].append(batch_idx)
                 result_summary["true_label"].append(labels.item())
                 result_summary["max_logit_before_opt"].append(pred_before.item())
                 for key in result_summary.keys():
-                    if key not in ["sample_idx", "true_label", "max_logit_brefore_opt"]:
+                    if key not in ["sample_idx", "true_label", "max_logit_before_opt"]:
                         result_summary[key].append(-100)  # Add a placeholder in the logger
             else:
                 msg = "Sample [%d] - prediction correct. Begin PyGRANSO OPT >>>" % batch_idx
@@ -328,7 +327,7 @@ def main(cfg, dtype=torch.double):
                 result_summary, result_csv_dir
             )
 
-            if cfg["save_vis"]:
+            if cfg["save_vis"] and (pred_correct_before > 0.5):
                 vis_dir = os.path.join(ckpt_dir, "dataset_vis")
                 makedir(vis_dir)
                 orig_save_name, adv_save_name = os.path.join(vis_dir, "orig_imgs.npy"), os.path.join(vis_dir, "adv_imgs.npy")

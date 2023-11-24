@@ -2,8 +2,8 @@
 {   
     "seed": 42,
     "continue": false,
-    "curr_sample": 0,
-    "end_sample": 2,
+    "curr_sample": 44,
+    "end_sample": 45,
     "save_vis": true,
 
     "log_folder":{
@@ -52,10 +52,10 @@
         "distance_metric": "L2",
         "attack_bound": 0.5,
         
-        "granso_early_max_iter": 20,
-        "granso_max_iter": 500,
+        "granso_early_max_iter": 50,
+        "granso_max_iter": 200,
         "granso_early_feasibility_thres": 0.01,
-        "granso_n_restarts": 5,
+        "granso_n_restarts": 2,
 
         "granso_mu0": 1,
         "granso_mem": 5,
