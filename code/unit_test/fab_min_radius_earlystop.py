@@ -151,7 +151,7 @@ def main(cfg, default_dtype=torch.double):
     n_restart = opt_config["fab_n_restarts"]
     init_scale = opt_config["fab_init_scale"]
     max_iter = opt_config["fab_max_iter"]
-    es_max_iter = 50  # For early stopping
+    es_max_iter = opt_config["fab_early_max_iter"]  # For early stopping
 
     fab_opt_runner_es = FABAttackPTModified(
         classifier_model, n_restarts=n_restart, n_iter=es_max_iter, targeted=False, eps=init_scale,

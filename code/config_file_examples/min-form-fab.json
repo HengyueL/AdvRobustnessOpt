@@ -33,6 +33,7 @@
 
         "fab_init_scale": 0.1,
         "fab_n_restarts": 10,
+        "fab_early_max_iter": 50,
         "fab_max_iter": 3000
     },
 
