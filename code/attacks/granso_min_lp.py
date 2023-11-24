@@ -100,7 +100,7 @@ def granso_min(
             opts.x0 = torch.cat([opts.x0, t], dim=0)
             print("Check Init scaling [t]", torch.linalg.vector_norm(t.reshape(-1), ord=float("inf")).item())
         elif attack_type in ["L1"]:
-            t = 1 * torch.rand_like(opts.x0).to(device, dtype=dtype)
+            t = 0.5 * torch.rand_like(opts.x0).to(device, dtype=dtype)
             opts.x0 = torch.cat([opts.x0, t], dim=0)
             print("Check Init scaling [t]", torch.linalg.vector_norm(t.reshape(-1), ord=1).item())
         

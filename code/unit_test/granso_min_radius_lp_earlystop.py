@@ -177,6 +177,7 @@ def main(cfg, dtype=torch.double):
         attack_distance_key: [],
         "distance_to_decision_boundary": [],
         "box_constraint_violation": [],
+        "total_iter": [],
         "time": [],
         "termination_code": []
     }
@@ -184,6 +185,7 @@ def main(cfg, dtype=torch.double):
     # === Create some variables from the cfg file for convenience in OPT settings ===
     n_restart = opt_config["granso_n_restarts"]
     max_iter = opt_config["granso_max_iter"]
+    es_iter = 50
     if attack_type == "Linf":
         init_scale = 0.03
     else:
@@ -223,8 +225,14 @@ def main(cfg, dtype=torch.double):
                 print_and_log(msg, log_file)
 
                 # OPT
-                granso_adv_output = {}
-                termination_code_dict = {}
+                granso_interm_dict = {}
+                granso_iter_dict = {}
+                granso_interm_x_dict = {}
+                granso_H_dict = {}
+                granso_mu_dict = {}
+                granso_iter_dict = {}
+                best_f, best_idx = float("inf"), 0
+
                 time_dict = {}
                 # ===== Early Stopped Granso, pick the best one and then continue =====
                 for restart_idx in range(n_restart):
@@ -234,40 +242,88 @@ def main(cfg, dtype=torch.double):
                     try:
                         sol = execute_granso_min_target(
                             inputs, labels, None, x_init, classifier_model, device,
-                            attack_config=cfg["granso_params"], max_iter=max_iter
-                        )
-                        x_sol = get_granso_adv_output(
-                            sol, attack_type, inputs
+                            attack_config=cfg["granso_params"], max_iter=es_iter
                         )
                         termination_code = sol.termination_code
                     except:
                         msg = "  Restart [%d] OPT Failure... Return original the original inputs... " % restart_idx
                         print_and_log(msg, log_file)
                         sol = None
-                        x_sol = get_granso_adv_output(
-                            sol, attack_type, inputs
-                        )
                         termination_code = -100
+                    
                     t_end = time.time()
-                    granso_adv_output[restart_idx] = x_sol
                     time_dict[restart_idx] = t_end - t_start
-                    termination_code_dict[restart_idx] = termination_code
+                    x_sol = get_granso_adv_output(
+                        sol, attack_type, inputs
+                    )
+                    granso_iter_dict[restart_idx] = x_sol
+                    # === Log all interm result ===
+                    if sol is not None:
+                        granso_iter_dict[restart_idx] = sol.iters
+                        granso_H_dict[restart_idx] = sol.H_final
+                        granso_mu_dict[restart_idx] = sol.final.mu
+                        granso_interm_x_dict[restart_idx] = sol.final.x
+                        granso_iter_dict[restart_idx] = sol.iters
+                        granso_final_f = sol.final.f
+                        if granso_final_f < best_f and termination_code not in [6, 7]:
+                            best_f = granso_final_f
+                            best_idx = restart_idx
+                    else:
+                        granso_iter_dict[restart_idx] = None
+                        granso_H_dict[restart_idx] = None
+                        granso_mu_dict[restart_idx] = None
+                        granso_interm_x_dict[restart_idx] = None
+                        granso_iter_dict[restart_idx] = None
 
+                # === Select the interm result with the lowest objective to continue ===
+                msg = "   Warm start with #[%d] run" % best_idx
+                print_and_log(msg, log_file)
+                H_continue = granso_H_dict[best_idx]
+                x_continue = granso_interm_x_dict[best_idx]
+                mu_continue = granso_mu_dict[best_idx]
+
+                t_start = time.time()
+                if H_continue["S"].shape[1] == H_continue["rho"].shape[1]:
+                    # === ES stage does not converge ===
+                    try:
+                        sol = execute_granso_min_target(
+                            inputs, labels, None, x_continue,
+                            classifier_model, device,
+                            attack_config=cfg["granso_params"], 
+                            mu0=mu_continue, H0_init=H_continue
+                        )
+                        termination_code = sol.termination_code
+                    except:
+                        sol = None
+                        termination_code = -100
+                    x_sol = get_granso_adv_output(
+                        sol, attack_type, inputs
+                    )
+                    final_iters = sol.iters + granso_iter_dict[best_idx]
+                else:
+                    # === ES stage already converge ===
+                    x_sol = granso_interm_dict[best_idx]
+                    termination_code = 0
+                    final_iters = granso_iter_dict[best_idx]
+                t_end = time.time()
+
+                granso_final_x_dict = {best_idx: x_sol}
                 radius_dict, boundary_distance_dict, box_violation_dict, attacked_label_dict, best_key = calc_min_dist_sample(
-                    granso_adv_output, inputs, attack_type, classifier_model, labels.item(), log_file
+                    granso_final_x_dict, inputs, attack_type, classifier_model, labels.item(), log_file
                 )
                 # === Log the best result ===
-                for key in granso_adv_output.keys():
-                    result_summary["sample_idx"].append(batch_idx)
-                    result_summary["restart"].append(key)
-                    result_summary["true_label"].append(labels.item())
-                    result_summary["max_logit_before_opt"].append(pred_before.item())
-                    result_summary[attack_distance_key].append(radius_dict[key])
-                    result_summary["max_logit_after_opt"].append(attacked_label_dict[key])
-                    result_summary["distance_to_decision_boundary"].append(boundary_distance_dict[key])
-                    result_summary["box_constraint_violation"].append(box_violation_dict[key])
-                    result_summary["time"].append(time_dict[key])
-                    result_summary["termination_code"].append(termination_code_dict[key])
+                total_time = np.sum(list(time_dict.values())) + t_end - t_start
+                result_summary["sample_idx"].append(batch_idx)
+                result_summary["restart"].append(best_key)
+                result_summary["true_label"].append(labels.item())
+                result_summary["max_logit_before_opt"].append(pred_before.item())
+                result_summary[attack_distance_key].append(radius_dict[best_key])
+                result_summary["max_logit_after_opt"].append(attacked_label_dict[best_key])
+                result_summary["distance_to_decision_boundary"].append(boundary_distance_dict[best_key])
+                result_summary["box_constraint_violation"].append(box_violation_dict[best_key])
+                result_summary["time"].append(total_time)
+                result_summary["termination_code"].append(termination_code)
+                result_summary["total_iter"].append(final_iters)
             save_dict_to_csv(
                 result_summary, result_csv_dir
             )
@@ -279,7 +335,7 @@ def main(cfg, dtype=torch.double):
 
                 orig_img_np = inputs.detach().cpu().numpy()[0, :, :, :]
                 orig_img_list.append(orig_img_np)
-                adv_img_np = granso_adv_output[best_key].detach().cpu().numpy()[0, :, :, :]
+                adv_img_np = granso_final_x_dict[best_key].detach().cpu().numpy()[0, :, :, :]
                 adv_img_list.append(adv_img_np)
 
                 np.save(orig_save_name, np.asarray(orig_img_list))
@@ -288,7 +344,7 @@ def main(cfg, dtype=torch.double):
 
 if __name__ == "__main__":
     clear_terminal_output()
-    print("Solving [Min Form] optimization with PyGRANSO.")
+    print("Solving [Min Form] optimization with PyGRANSO (Early Stop Version).")
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", dest="config", type=str,

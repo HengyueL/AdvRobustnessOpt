@@ -49,13 +49,13 @@
     },
 
     "granso_params": {
-        "distance_metric": "L1",
+        "distance_metric": "L2",
         "attack_bound": 0.5,
         
         "granso_early_max_iter": 20,
         "granso_max_iter": 500,
         "granso_early_feasibility_thres": 0.01,
-        "granso_n_restarts": 2,
+        "granso_n_restarts": 5,
 
         "granso_mu0": 1,
         "granso_mem": 5,
