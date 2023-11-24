@@ -3,11 +3,11 @@
     "seed": 42,
     "continue": false,
     "curr_sample": 0,
-    "end_sample": 100,
+    "end_sample": 2,
     "save_vis": true,
 
     "log_folder":{
-        "save_root": "Min-FAB-CIFAR-L2"
+        "save_root": "CIFAR-Min\\FAB-L2"
     },
 
     "classifier_model":{
@@ -23,7 +23,7 @@
 
         "input_size": 32,
         "workers": 0,
-        "dataset_path": "C:\\Users\\Liang\\dataset\\Cifar10\\Clean",
+        "dataset_path": "E:\\Dataset\\cifar10\\clean",
         "train_transform": "default"
 
     },

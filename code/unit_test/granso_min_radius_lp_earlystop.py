@@ -185,6 +185,7 @@ def main(cfg, dtype=torch.double):
     # === Create some variables from the cfg file for convenience in OPT settings ===
     n_restart = opt_config["granso_n_restarts"]
     es_iter = 50
+    max_iter = opt_config["granso_max_iter"]
     if attack_type == "Linf":
         init_scale = 0.03
     else:
@@ -289,7 +290,8 @@ def main(cfg, dtype=torch.double):
                             inputs, labels, None, x_continue,
                             classifier_model, device,
                             attack_config=cfg["granso_params"], 
-                            mu0=mu_continue, H0_init=H_continue
+                            mu0=mu_continue, H0_init=H_continue,
+                            max_iter=max_iter-es_iter
                         )
                         termination_code = sol.termination_code
                     except:

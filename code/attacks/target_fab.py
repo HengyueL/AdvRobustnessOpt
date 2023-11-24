@@ -84,7 +84,10 @@ class FABAttackModified():
     def get_diff_logits_grads_batch_targeted(self, imgs, la, la_target):
        raise NotImplementedError("Virtual function.")
 
-    def attack_single_run(self, x, y=None, use_rand_start=False, is_targeted=False, target_class=None, verbose=True):
+    def attack_single_run(
+        self, x, y=None, use_rand_start=False, is_targeted=False, 
+        target_class=None, verbose=True, x_init=None, iter_resume=0
+    ):
         """
         :param x:             clean images
         :param y:             clean labels, if None we use the predicted labels
@@ -99,7 +102,6 @@ class FABAttackModified():
         self.ndims = len(self.orig_dim)
 
         x = x.detach().clone().float().to(self.device)
-        #assert next(self.predict.parameters()).device == x.device
 
         y_pred = self._get_predicted_label(x)
         if y is None:
@@ -141,67 +143,51 @@ class FABAttackModified():
             best_distance, best_iter = float("inf"), 0
             if use_rand_start:
                 if self.norm == 'Linf':
-                    t = 2 * torch.rand(x1.shape).to(self.device) - 1
-                    x1 = im2 + (torch.min(res2,
-                                          self.eps * torch.ones(res2.shape)
-                                          .to(self.device)
-                                          ).reshape([-1, *[1]*self.ndims])
-                                ) * t / (t.reshape([t.shape[0], -1]).abs()
-                                         .max(dim=1, keepdim=True)[0]
-                                         .reshape([-1, *[1]*self.ndims])) * .5
-                    # x1 = im2 + (torch.min(res2,
-                    #                       self.eps * torch.ones(res2.shape)
-                    #                       .to(self.device)
-                    #                       ).reshape([-1, *[1]*self.ndims])
-                    #             ) * t
+                    if x_init is None:
+                        t = 2 * torch.rand(x1.shape).to(self.device) - 1
+                        x1 = im2 + (torch.min(res2,
+                                            self.eps * torch.ones(res2.shape)
+                                            .to(self.device)
+                                            ).reshape([-1, *[1]*self.ndims])
+                                    ) * t / (t.reshape([t.shape[0], -1]).abs()
+                                            .max(dim=1, keepdim=True)[0]
+                                            .reshape([-1, *[1]*self.ndims])) * .5
+                    else:
+                        x1 = x_init
                     x1 = x1.clamp(0.0, 1.0)
-                    diff = (x1-im2).reshape(x1.shape[0], -1)
-                    diff = torch.linalg.norm(diff, ord=float("inf"), dim=1)
 
                 elif self.norm == 'L2':
-                    t = torch.randn(x1.shape).to(self.device)
-                    x1 = im2 + (torch.min(res2,
-                                          self.eps * torch.ones(res2.shape)
-                                          .to(self.device)
-                                          ).reshape([-1, *[1]*self.ndims])
-                                ) * t / ((t ** 2)
-                                         .view(t.shape[0], -1)
-                                         .sum(dim=-1)
-                                         .sqrt()
-                                         .view(t.shape[0], *[1]*self.ndims)) * .5
-                    # x1 = im2 + (torch.min(res2,
-                    #                       self.eps * torch.ones(res2.shape)
-                    #                       .to(self.device)
-                    #                       ).reshape([-1, *[1]*self.ndims])
-                    #             ) * t
+                    if x_init is None:
+                        t = torch.randn(x1.shape).to(self.device)
+                        x1 = im2 + (torch.min(res2,
+                                            self.eps * torch.ones(res2.shape)
+                                            .to(self.device)
+                                            ).reshape([-1, *[1]*self.ndims])
+                                    ) * t / ((t ** 2)
+                                            .view(t.shape[0], -1)
+                                            .sum(dim=-1)
+                                            .sqrt()
+                                            .view(t.shape[0], *[1]*self.ndims)) * .5
+                    else:
+                        x1 = x_init
                     x1 = x1.clamp(0.0, 1.0)
-                    diff = (x1-im2).reshape(x1.shape[0], -1)
-                    diff = torch.linalg.norm(diff, ord=2, dim=1)
 
                 elif self.norm == 'L1':
-                    t = torch.randn(x1.shape).to(self.device)
-                    x1 = im2 + (torch.min(res2,
-                                          self.eps * torch.ones(res2.shape)
-                                          .to(self.device)
-                                          ).reshape([-1, *[1]*self.ndims])
-                                ) * t / (t.abs().view(t.shape[0], -1)
-                                         .sum(dim=-1)
-                                         .view(t.shape[0], *[1]*self.ndims)) / 2
-                    # x1 = im2 + (torch.min(res2,
-                    #                       self.eps * torch.ones(res2.shape)
-                    #                       .to(self.device)
-                    #                       ).reshape([-1, *[1]*self.ndims])
-                    #             ) * t
+                    if x_init is None:
+                        t = torch.randn(x1.shape).to(self.device)
+                        x1 = im2 + (torch.min(res2,
+                                            self.eps * torch.ones(res2.shape)
+                                            .to(self.device)
+                                            ).reshape([-1, *[1]*self.ndims])
+                                    ) * t / (t.abs().view(t.shape[0], -1)
+                                            .sum(dim=-1)
+                                            .view(t.shape[0], *[1]*self.ndims)) / 2
+                    else:
+                        x1 = x_init
                     x1 = x1.clamp(0.0, 1.0)
-                    diff = (x1-im2).reshape(x1.shape[0], -1)
-                    diff = torch.linalg.norm(diff, ord=1, dim=1)
-                # print("========================")
-                # print(">> FAB init scaling check: ")
-                # print("[%d]" % counter_restarts, diff)
+   
                 
-                
-
-            counter_iter = 0
+            counter_iter = iter_resume
             while counter_iter < self.n_iter:
                 with torch.no_grad():
                     if is_targeted:
@@ -344,7 +330,7 @@ class FABAttackModified():
 
         return adv_c, best_iter
 
-    def perturb(self, x, y, target_class=None):
+    def perturb(self, x, y, target_class=None, x_init=None, iter_resume=0):
         final_res = {}
         final_iter = {}
 
@@ -370,7 +356,10 @@ class FABAttackModified():
                     if ind_to_fool.numel() != 0:
                         x_to_fool, y_to_fool = x[ind_to_fool].clone(), y[ind_to_fool].clone()
                         # print("Perform attack on samples: ", x_to_fool.shape)
-                        adv_curr, best_iter = self.attack_single_run(x_to_fool, y_to_fool, use_rand_start=(counter > 0), is_targeted=False)
+                        adv_curr, best_iter = self.attack_single_run(
+                            x_to_fool, y_to_fool, use_rand_start=(counter > 0), is_targeted=False,
+                            x_init=x_init, iter_resume=iter_resume
+                        )
 
                         # ==== The following modifications are made to return all adv samples
                         # ==== Without checking the eps and classified correct 
@@ -417,7 +406,8 @@ class FABAttackModified():
                         x_to_fool, y_to_fool = x[ind_to_fool].clone(), y[ind_to_fool].clone()
                         adv_curr, best_iter = self.attack_single_run(
                             x_to_fool, y_to_fool, use_rand_start=(counter > 0), 
-                            is_targeted=True, target_class=target_class)
+                            is_targeted=True, target_class=target_class, x_init=x_init, iter_resume=iter_resume
+                        )
 
                         # ==== The following modifications are made to return all adv samples
                         # ==== Without checking the eps and classified correct 
