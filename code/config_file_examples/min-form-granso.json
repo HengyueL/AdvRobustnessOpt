@@ -28,6 +28,24 @@
 
     },
 
+    "classifier_model_comment":{
+        "type": "PAT-ImageNet100",
+        "weight_path": "os.path.join('..', 'model', 'PAT-ImageNet100', 'pat_alexnet_0.5.pt')",
+        "use_clamp_input": false
+    },
+
+    "dataset_comment":{
+        "name": "imagenet",
+        "num_classes": 100,
+        "label_list": "list(range(0, 1000, 10))",
+
+        "input_size": 224,
+        "workers": 0,
+        "clean_dataset_path": "C:\\Users\\Liang\\dataset\\ImageNet",
+        "train_transform": "default"
+
+    },
+
     "test_attack": {
         "attack_type": "FAB"
     },
