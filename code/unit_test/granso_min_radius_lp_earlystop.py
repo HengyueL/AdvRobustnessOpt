@@ -184,7 +184,7 @@ def main(cfg, dtype=torch.double):
 
     # === Create some variables from the cfg file for convenience in OPT settings ===
     n_restart = opt_config["granso_n_restarts"]
-    es_iter = 50
+    es_iter = opt_config["granso_early_max_iter"]
     max_iter = opt_config["granso_max_iter"]
     if attack_type == "Linf":
         init_scale = 0.03
