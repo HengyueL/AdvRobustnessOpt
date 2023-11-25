@@ -11,11 +11,7 @@ from pygranso.pygransoStruct import pygransoStruct
 # ==== Note: PyGRANSO only support batch_size = 1 input currently ====
 
 def granso_max_attack(
-    inputs, labels,
-    x0,
-    model,
-    attack_type,
-    device,
+    inputs, labels, x0, model, attack_type, device,
     loss_func, eps,
     lpips_distance=None,
     max_iter=1000,
@@ -24,11 +20,10 @@ def granso_max_attack(
     opt_tol=1e-8, 
     steering_c_viol=0.1,
     steering_c_mu=0.9,
-    stat_l2=True,
+    stat_l2=False,
     steering_l1=True,
     mu0=1,
     mem_size_param=10,
-    input_constraint_type="L2-folding",
     print_log=True,
     dtype=torch.double,
     linesearch_maxit=None,
@@ -77,7 +72,6 @@ def granso_max_attack(
     if maxclocktime is not None:
         opts.maxclocktime = maxclocktime  # Set granso wall time
 
-    assert input_constraint_type in ["L2-folding", None], "only support Box | None currently"
     var_in = {"z": list(inputs.shape)}
     
     # ===== If attack is LPIPS, then this cannot be None =====
@@ -93,14 +87,12 @@ def granso_max_attack(
         attack_type=attack_type,
         eps=eps,
         loss_func=loss_func,
-        input_constraint_type=input_constraint_type,
         lpips_distance=lpips_distance
     )
 
     # ==== Init ====
     opts.x0 = torch.reshape(x0, (-1, 1))
-
-
+    
     # === If H0 is given, then pygranso uses warm start ===
     if H0_init is not None:
         opts.limited_mem_warm_start = H0_init
@@ -130,7 +122,6 @@ def user_fn_max(
     attack_type,
     eps,
     loss_func,
-    input_constraint_type,
     lpips_distance=None
 ):
     adv_inputs = X_struct.z
@@ -179,26 +170,14 @@ def user_fn_max(
         constr_vec = torch.linalg.vector_norm(constr_vec, ord=2)
     else:
         raise RuntimeError("Undefined Maximization Problem. Check Code or add function")
-    
     ci.c1 = constr_vec
 
     # ==== [0, 1] Box Constraint ====
-    if input_constraint_type == "L2-folding":
-        box_constr = torch.hstack(
-            (adv_inputs.reshape(inputs.numel()) - 1,
-            -adv_inputs.reshape(inputs.numel()))
-        )
-        box_constr = torch.clamp(box_constr, min=0)
-        folded_constr = torch.linalg.vector_norm(box_constr.reshape(-1), ord=2) / normalization_factor
-        ci.c2 = folded_constr
-    elif input_constraint_type is None:
-        box_constr = torch.hstack(
-            (adv_inputs.reshape(inputs.numel()) - 1,
-            -adv_inputs.reshape(inputs.numel()))
-        )
-        ci.c2 = box_constr
-    else:
-        raise RuntimeError("Unsupported Constraint Type.")
-
+    box_constr = torch.hstack(
+        (adv_inputs.reshape(inputs.numel()) - 1,
+        -adv_inputs.reshape(inputs.numel()))
+    )
+    box_constr = torch.clamp(box_constr, min=0)
+    folded_constr = torch.linalg.vector_norm(box_constr.reshape(-1), ord=2) / normalization_factor
+    ci.c2 = folded_constr
     return [f,ci,ce]
-

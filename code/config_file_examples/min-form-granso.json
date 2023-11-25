@@ -80,8 +80,8 @@
         "granso_stat_l2": false,
         "granso_steering_l1": false,
 
-        "granso_eq_tol": 1e-4,
-        "granso_ieq_tol": 1e-4,
+        "granso_eq_tol": 1e-3,
+        "granso_ieq_tol": 1e-3,
         "granso_opt_tol": 1e-3,
 
         "granso_loss": {

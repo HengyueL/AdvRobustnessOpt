@@ -145,9 +145,9 @@ def get_loss_func_eval(name, reduction, use_clip_loss):
 def get_granso_loss_func(name, reduction, use_clip_loss, dataset_name="imagenet"):
     if name == "CE":
         if use_clip_loss:
-            if dataset_name in ["imagenet", "cifar100"]:
+            if dataset_name  == "imagenet":
                 clamp_value = 4.7
-            elif dataset_name in ["cifar10"]:
+            elif dataset_name == "cifar10":
                 clamp_value = 2.4
             else:
                 raise RuntimeError("Need to specify dataset name for clipping")

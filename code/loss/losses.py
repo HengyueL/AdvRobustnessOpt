@@ -70,7 +70,7 @@ class NegMarginLoss(nn.Module):
     def __init__(self, reduction="mean", use_clip_loss=False, clamp_value=0.01):
         super(NegMarginLoss, self).__init__()
         self.reduction = reduction
-        self.use_flip_loss = use_clip_loss
+        self.use_clip_loss = use_clip_loss
         if self.use_clip_loss:
             self.clamp_value = clamp_value
         else:
