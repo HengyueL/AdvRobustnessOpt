@@ -20,7 +20,8 @@ def calc_best_sample(
     attack_type,  
     model, 
     target_label,
-    log_file
+    log_file,
+    lpips_distance=None
 ):
     keys = adv_output_dict.keys()
 
@@ -37,29 +38,34 @@ def calc_best_sample(
         attacked_label = pred.argmax(1).item()
         attacked_label_dict[key] = attacked_label
 
-        adv_output = adv_output.clone().reshape(1, -1)
-        orig_input = orig_input.clone().reshape(1, -1)
+        adv_output_vec = adv_output.clone().reshape(1, -1)
+        orig_input_vec = orig_input.clone().reshape(1, -1)
         # Check [0, 1] box constraint
-        greater_than_1 = torch.sum(torch.where(adv_output > (1 + 1e-4), 1, 0)).item()
-        smaller_than_0 = torch.sum(torch.where(adv_output < (0 - 1e-4), 1, 0)).item()
+        greater_than_1 = torch.sum(torch.where(adv_output_vec > (1 + 1e-4), 1, 0)).item()
+        smaller_than_0 = torch.sum(torch.where(adv_output_vec < (0 - 1e-4), 1, 0)).item()
         num_violation = greater_than_1 + smaller_than_0
         box_violation_dict[key] = num_violation
         
-        err_vec = torch.abs(adv_output - orig_input)
-        assert "L" in attack_type, "Norm character partition incorrect"
+        err_vec = torch.abs(adv_output_vec - orig_input_vec)
+        if "L" in attack_type:
+            if attack_type == "L1-Reform":
+                attack_key_word = "L1"
+            else:
+                attack_key_word = attack_type
+            p_norm = attack_key_word.split("L")[-1]
+            if p_norm == "inf":
+                p_distance = torch.amax(err_vec, dim=1).cpu().item()
+            else:
+                p_norm = float(p_norm)
+                p_distance = (torch.sum(err_vec**p_norm, dim=1)**(1/p_norm)).cpu().item()
+            radius_dict[key] = p_distance
 
-        if attack_type == "L1-Reform":
-            attack_key_word = "L1"
+        elif attack_type == "PAT":
+            p_distance = lpips_distance(adv_output, orig_input).cpu().item()
+            radius_dict[key] = p_distance
         else:
-            attack_key_word = attack_type
-        p_norm = attack_key_word.split("L")[-1]
-        if p_norm == "inf":
-            p_distance = torch.amax(err_vec, dim=1).cpu().item()
-        else:
-            p_norm = float(p_norm)
-            p_distance = (torch.sum(err_vec**p_norm, dim=1)**(1/p_norm)).cpu().item()
+            raise RuntimeError("Unsupported norm type.")
         
-        radius_dict[key] = p_distance
         msg = "  >> Restart [%d] has  - radius [%.04f] - box violations [%d] >> " % (
             key, p_distance, num_violation
         )
@@ -69,8 +75,6 @@ def calc_best_sample(
             best_key = key
 
     return radius_dict, box_violation_dict, attacked_label_dict, best_key
-
-
 
 
 def get_granso_adv_output_maxform(sol, input_to_granso):
@@ -182,7 +186,7 @@ def main(cfg, dtype=torch.double):
     attack_type = opt_config["distance_metric"]
     result_csv_dir = os.path.join(ckpt_dir, "opt_result.csv")
 
-    radius_name = "%s_distance"
+    radius_name = "%s_distance" % attack_type
     result_summary = {
         "sample_idx": [],
         "restart": [],
@@ -368,7 +372,7 @@ def main(cfg, dtype=torch.double):
 
                 granso_final_x_dict = {best_idx: x_sol}
                 radius_dict, box_violation_dict, attacked_label_dict, best_key = calc_best_sample(
-                    granso_final_x_dict, inputs, attack_type, classifier_model, labels.item(), log_file
+                    granso_final_x_dict, inputs, attack_type, classifier_model, labels.item(), log_file, lpips_model
                 )
                 eps = opt_config["attack_bound"]
                 # === Log the best result ===
