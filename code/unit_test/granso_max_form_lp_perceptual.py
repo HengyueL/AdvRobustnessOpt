@@ -318,7 +318,7 @@ def main(cfg, dtype=torch.double):
                             adv_pred = classifier_model(inputs).argmax(1)
                         condition = (adv_pred == labels).sum().item()
 
-                        if termination_code == 0 and not condition:
+                        if termination_code == 0 and condition < 0.5:
                             best_idx = restart_idx
                             best_f = -float("inf")
                             break
