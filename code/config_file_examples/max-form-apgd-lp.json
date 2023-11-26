@@ -1,8 +1,8 @@
 {   
     "seed": 42,
     "continue": false,
-    "curr_batch": 0,
-    "end_batch_num": 3,
+    "curr_sample": 0,
+    "end_sample": 3,
     "save_vis": true,
 
     "log_folder":{
@@ -10,8 +10,8 @@
     },
 
     "classifier_model":{
-        "type": "PAT-Cifar10",
-        "weight_path": "os.path.join('..', 'model', 'PAT-Cifar10', 'pat_self_0.5.pt')",
+        "type": "DeepMind",
+        "weight_path": "os.path.join('..', 'model', 'DeepMind-Cifar10', 'L2-Extra.pt')",
         "use_clamp_input": false
     },
 
@@ -32,7 +32,7 @@
         "distance_metric": "L2",
         "attack_bound": 0.5,
 
-        "apgd_n_restarts": 5,
+        "apgd_n_restarts": 2,
         "apgd_max_iter": 200
     },
 

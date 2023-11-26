@@ -488,9 +488,9 @@ class APGDAttackMargin():
                         grad[fl_redtopk] = grad_best[fl_redtopk].clone()
                     
                     counter3 = 0
-                print("APGD maring iter [%d] -- loss [%.04f]" % (i, y1.sum().item()))
+                print("  APGD maring iter [%d] -- loss [%.08f]" % (i, y1.sum().item()))
 
-        print("APGD Maring finds the best loss at iter [{}]".format(best_iter_log))
+        print("===== APGD Maring finds the best loss at iter [{}] =====".format(best_iter_log))
         return (x_best, acc, loss_best, x_best_adv)
 
     def perturb(self, x, y=None, best_loss=False, x_init=None):
@@ -524,6 +524,7 @@ class APGDAttackMargin():
         else:
             acc = y_pred != y
         loss = -1e10 * torch.ones_like(acc).float()
+
         if self.verbose:
             print('-------------------------- ',
                 'running {}-attack with epsilon {:.5f}'.format(
@@ -547,8 +548,9 @@ class APGDAttackMargin():
         if not best_loss:
             torch.random.manual_seed(self.seed)
             torch.cuda.random.manual_seed(self.seed)
-
+            
             for counter in range(self.n_restarts):
+                print("Restart [%d]" % counter)
                 ind_to_fool = acc.nonzero().squeeze()
                 if len(ind_to_fool.shape) == 0:
                     ind_to_fool = ind_to_fool.unsqueeze(0)
@@ -570,8 +572,7 @@ class APGDAttackMargin():
                         print('restart {} - robust accuracy: {:.2%}'.format(
                             counter, acc.float().mean()),
                             '- cum. time: {:.1f} s'.format(
-                            time.time() - startt))
-
+                            time.time() - startt))        
             return adv
 
         else:
@@ -579,6 +580,7 @@ class APGDAttackMargin():
             loss_best = torch.ones([x.shape[0]]).to(
                 self.device) * (-float('inf'))
             for counter in range(self.n_restarts):
+                print("Restart [%d]" % counter)
                 best_curr, _, loss_curr, _ = self.attack_single_run(x, y)
                 ind_curr = (loss_curr > loss_best).nonzero().squeeze()
                 adv_best[ind_curr] = best_curr[ind_curr] + 0.
@@ -997,8 +999,8 @@ class APGDAttackCE():
                   counter3 = 0
                   #k = max(k - self.size_decr, self.n_iter_min)
             
-            print("APGD ce iter [%d] -- loss [%.04f]" % (i, y1.sum().item()))
-        print("APGD finds the best loss at iter [{}]".format(best_iter_log))
+            print("  APGD ce iter [%d] -- loss [%.08f]" % (i, y1.sum().item()))
+        print("===== APGD finds the best loss at iter [{}] =====".format(best_iter_log))
         return (x_best, acc, loss_best, x_best_adv)
 
     def perturb(self, x, y=None, best_loss=False, x_init=None):
@@ -1057,6 +1059,7 @@ class APGDAttackCE():
             torch.cuda.random.manual_seed(self.seed)
 
             for counter in range(self.n_restarts):
+                print("Start restart [%d]" % counter)
                 ind_to_fool = acc.nonzero().squeeze()
                 if len(ind_to_fool.shape) == 0:
                     ind_to_fool = ind_to_fool.unsqueeze(0)
@@ -1087,6 +1090,7 @@ class APGDAttackCE():
             loss_best = torch.ones([x.shape[0]]).to(
                 self.device) * (-float('inf'))
             for counter in range(self.n_restarts):
+                print("Restart [%d]" % counter)
                 best_curr, _, loss_curr, _ = self.attack_single_run(x, y)
                 ind_curr = (loss_curr > loss_best).nonzero().squeeze()
                 adv_best[ind_curr] = best_curr[ind_curr] + 0.
