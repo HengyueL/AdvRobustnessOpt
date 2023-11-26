@@ -315,7 +315,7 @@ def main(cfg, dtype=torch.double):
 
                         # == Check if attack successful
                         with torch.no_grad():
-                            adv_pred = classifier_model(inputs).argmax(1)
+                            adv_pred = classifier_model(x_sol).argmax(1)
                         condition = (adv_pred == labels).sum().item()
 
                         if termination_code == 0 and condition < 0.5:
