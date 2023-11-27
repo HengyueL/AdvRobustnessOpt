@@ -131,9 +131,9 @@ def user_fn_max(
     f = loss_func(logit_outputs, labels)
 
     # normalizing factor if used 
-    # num_pixels = torch.as_tensor(np.prod(adv_inputs.shape))
-    # normalization_factor = num_pixels**0.5
-    normalization_factor = 1
+    num_pixels = torch.as_tensor(np.prod(adv_inputs.shape))
+    normalization_factor = num_pixels**0.5
+    # normalization_factor = 1
 
     # Equality constraint
     ce = None
