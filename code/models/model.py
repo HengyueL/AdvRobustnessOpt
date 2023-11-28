@@ -6,7 +6,7 @@ from robustness.cifar_models import resnet50 as rn_cifar50
 from torchvision import models as torchvision_models
 # ==== In Project Import ====
 import sys
-from models.blocks import ImageNetNormalizer, _straightThroughClamp
+from models.blocks import ImageNetNormalizer
 from models.robust_union_models import PreActResNet18
 from models.deepmind_wideresnet import CIFAR100_MEAN, CIFAR100_STD, Swish, WideResNet
 
@@ -191,11 +191,10 @@ class UnionRes18(nn.Module):
         super().__init__()
         self.model = PreActResNet18()
         self.use_clamp_input = use_clamp_input
-        self.clamp_layer = _straightThroughClamp.apply
     
     def forward(self, x):
         if self.use_clamp_input:
-            x = self.clamp_layer(x)
+            x = torch.clamp(x, 0, 1)
         x = self.model(x)
         return x
 
@@ -214,10 +213,9 @@ class DeepMindWideResNetModel(nn.Module):
             activation_fn=Swish, mean=CIFAR100_MEAN,
             std=CIFAR100_STD
         )
-        self.clamp_layer = _straightThroughClamp.apply
     
     def forward(self, x):
         if self.use_clamp_input:
-            x = self.clamp_layer(x)
+            x = torch.clamp(x, 0, 1)
         return self.model(x)
 

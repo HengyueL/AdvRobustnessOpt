@@ -166,7 +166,7 @@ def get_samples(config, data_from_loader):
         raise RuntimeError("Unsupported Dataset")
     return inputs, labels
 
-def get_granso_adv_output(sol, attack_type, input_to_granso):
+def get_granso_adv_output(sol, attack_type, input_to_granso, use_clamp_value=False):
     if sol is None:
         granso_adv_output = -1 * torch.ones_like(input_to_granso)
     elif attack_type in ["Linf"]:
@@ -174,16 +174,22 @@ def get_granso_adv_output(sol, attack_type, input_to_granso):
             sol.final.x[:-1],
             input_to_granso.shape
         )
+        if use_clamp_value:
+            granso_adv_output = torch.clamp(granso_adv_output, 0, 1)
     elif attack_type in ["L1"]:
         granso_adv_output = torch.reshape(
             sol.final.x[:input_to_granso.numel()],
             input_to_granso.shape
         )
+        if use_clamp_value:
+            granso_adv_output = torch.clamp(granso_adv_output, 0, 1)
     else:
         granso_adv_output = torch.reshape(
             sol.final.x,
             input_to_granso.shape
         )
+        if use_clamp_value:
+            granso_adv_output = torch.clamp(granso_adv_output, 0, 1)
     return granso_adv_output
 
 

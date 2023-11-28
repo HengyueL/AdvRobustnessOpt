@@ -13,11 +13,10 @@ class ImageNetNormalizer(nn.Module):
 
         # === if clip input to [0, 1] to ensure valid image ===
         self.use_clamp_value = use_clamp_value
-        self.clamp_layer = _straightThroughClamp.apply
 
     def forward(self, x):
         if self.use_clamp_value:
-            x = self.clamp_layer(x)
+            x = torch.clamp(x, 0, 1)
         mean = torch.tensor(self.mean, device=x.device)
         std = torch.tensor(self.std, device=x.device)
 
@@ -25,18 +24,6 @@ class ImageNetNormalizer(nn.Module):
             (x - mean[None, :, None, None]) /
             std[None, :, None, None]
         )
-
-
-# ==== A straight through [0, 1] clamping ====
-class _straightThroughClamp(torch.autograd.Function):
-
-    @staticmethod
-    def forward(ctx, inputs):
-        return torch.clamp(inputs, 0, 1)
-    
-    @staticmethod
-    def backward(ctx, grad_output):
-        return F.hardtanh(grad_output)
 
 
 if __name__ == "__main__":

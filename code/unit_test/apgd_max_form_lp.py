@@ -65,9 +65,20 @@ def main(cfg, dtype=torch.float):
         "..", "log_folder", cfg["log_folder"]["save_root"]
     )
     makedir(save_root)
+
+    opt_config = cfg["apgd_params"]
+    loss_type = opt_config["loss"]
+    eps = opt_config["attack_bound"]
+    if loss_type == "CE":
+        attack_alg = "APGD"
+    elif loss_type == "Margin":
+        attack_alg = "APGD-Margin"
+    else:
+        raise RuntimeError("Unidentified APGD algorithm. Unsupported loss used.")
+
     # === Experiment Name ===
     img_start_idx, img_end_idx = cfg["curr_sample"], cfg["end_sample"]
-    exp_name = "APGD-%s_%d-%d" % (cfg["apgd_params"]["distance_metric"], img_start_idx, img_end_idx)
+    exp_name = "%s-%s_%d-%d" % (attack_alg, cfg["apgd_params"]["distance_metric"], img_start_idx, img_end_idx)
     ckpt_dir = os.path.join(save_root, exp_name)
     if cfg["continue"]:  # Load or save experiment dir
         ckpt_dir = cfg["ckpt_dir"]
@@ -93,24 +104,6 @@ def main(cfg, dtype=torch.float):
         cfg, only_val=True, shuffle_val=False
     )
 
-    opt_config = cfg["apgd_params"]
-    loss_type = opt_config["loss"]
-    eps = opt_config["attack_bound"]
-
-    # ==== Get either APGD-CE or APGD-Margin ====
-    if loss_type == "CE":
-        attack_alg = "APGD"
-    elif loss_type == "Margin":
-        attack_alg = "APGD-Margin"
-    else:
-        raise RuntimeError("Unidentified APGD algorithm. Unsupported loss used.")
-    attack = get_lp_attack(
-        attack_alg,
-        cfg["apgd_params"], 
-        classifier_model, 
-        device
-    )
-
     # === Format to summarize the final result
     attack_type = opt_config["distance_metric"]
     result_csv_dir = os.path.join(ckpt_dir, "opt_result.csv")
@@ -128,6 +121,14 @@ def main(cfg, dtype=torch.float):
         "box_constraint_violation": [],
         "time": []
     }
+
+    # ==== Get either APGD-CE or APGD-Margin ====
+    attack = get_lp_attack(
+        attack_alg,
+        cfg["apgd_params"], 
+        classifier_model, 
+        device
+    )
 
     # List to save dataset before & after optimization
     orig_img_list, adv_img_list = [], []

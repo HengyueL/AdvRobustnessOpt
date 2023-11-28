@@ -190,6 +190,7 @@ def main(cfg, dtype=torch.double):
         init_scale = 0.03
     else:
         init_scale = 0.1
+    use_clamp_value = cfg["classifier_model"]["use_clamp_input"]
     
     # List to save dataset before & after optimization
     orig_img_list, adv_img_list = [], []
@@ -254,7 +255,7 @@ def main(cfg, dtype=torch.double):
                     t_end = time.time()
                     time_dict[restart_idx] = t_end - t_start
                     x_sol = get_granso_adv_output(
-                        sol, attack_type, inputs
+                        sol, attack_type, inputs, use_clamp_value
                     )
                     # === Log all interm result ===
                     if sol is not None:
@@ -297,7 +298,7 @@ def main(cfg, dtype=torch.double):
                         sol = None
                         termination_code = -100
                     x_sol = get_granso_adv_output(
-                        sol, attack_type, inputs
+                        sol, attack_type, inputs, use_clamp_value
                     )
                     final_iters = sol.iters + granso_iter_dict[best_idx]
                 else:

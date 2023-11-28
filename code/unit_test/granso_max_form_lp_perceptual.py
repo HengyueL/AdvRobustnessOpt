@@ -77,7 +77,7 @@ def calc_best_sample(
     return radius_dict, box_violation_dict, attacked_label_dict, best_key
 
 
-def get_granso_adv_output_maxform(sol, input_to_granso):
+def get_granso_adv_output_maxform(sol, input_to_granso, use_clamp_value=False):
     """
         Retrive x' from granso sol.
     """
@@ -88,6 +88,8 @@ def get_granso_adv_output_maxform(sol, input_to_granso):
             sol.final.x,
             input_to_granso.shape
         )
+        if use_clamp_value:
+            granso_adv_output = torch.clamp(granso_adv_output, 0, 1)
     return granso_adv_output
 
 
@@ -236,6 +238,8 @@ def main(cfg, dtype=torch.double):
     max_iter = opt_config["granso_max_iter"]
     es_max_iter = opt_config["granso_early_max_iter"]  # For early stopping
     init_scale = 0.1
+    use_clamp_value = cfg["classifier_model"]["use_clamp_input"]
+
     # List to save dataset before & after optimization
     orig_img_list, adv_img_list = [], []
     # === Main OPT
@@ -305,7 +309,7 @@ def main(cfg, dtype=torch.double):
                     #     termination_code = -100
                     #     total_violation = float("inf")
                     t_end = time.time()
-                    x_sol = get_granso_adv_output_maxform(sol, inputs)
+                    x_sol = get_granso_adv_output_maxform(sol, inputs, use_clamp_value)
                     # === Log Interm result ===
                     if sol is not None:
                         granso_interm_dict[restart_idx] = x_sol
@@ -367,7 +371,7 @@ def main(cfg, dtype=torch.double):
                     )
                     final_time = time.time() - t_start
                     termination_code = sol.termination_code
-                    x_sol = get_granso_adv_output_maxform(sol, inputs)
+                    x_sol = get_granso_adv_output_maxform(sol, inputs, use_clamp_value)
                     final_iters = sol.iters + granso_iter_dict[best_idx]
 
                 granso_final_x_dict = {best_idx: x_sol}

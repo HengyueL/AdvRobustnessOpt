@@ -29,7 +29,7 @@ def build_model(
     ):
     model_type = model_config["type"]
     model_path = model_config["weight_path"]
-    use_clamp_value = False
+    use_clamp_value = model_config["use_clamp_input"]
     
     if model_path is not None:
         model_path = eval(model_path)
