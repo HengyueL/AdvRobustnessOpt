@@ -188,7 +188,7 @@ def user_fn_min_separate_constraint(
     )
     box_constr = torch.clamp(box_constr, min=0)
     folded_constr = torch.linalg.vector_norm(box_constr.reshape(-1), ord=2)
-    ci.c2 = folded_constr
+    ci.c2 = folded_constr / normalization_factor_f
 
     if attack_type in ["Linf", "L1"]:
         if attack_type == 'Linf':
