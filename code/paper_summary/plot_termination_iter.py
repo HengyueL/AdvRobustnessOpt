@@ -91,16 +91,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--exp_name", dest="exp_name", type=str,
-        default="ImageNet-Min",
+        default="ImageNet-Max",
         help="CIFAR/ImageNet - Min-Max experiment."
     )
     parser.add_argument(
         "--case_name", dest="case_name", type=str,
-        default="Granso-L2",
+        default="Granso-Linf",
         help="APGD/Fab/Granso - L1/L2/Linf/PAT."
     )
     args = parser.parse_args()
     args.file_name = "opt_result.csv"
-    args.bin_width = 400
+    args.bin_width = 50
     main(args)
     print("Complete")
