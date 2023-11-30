@@ -67,7 +67,7 @@ def calc_min_dist_sample(
         err_vec = torch.abs(adv_output - orig_input)
         assert "L" in attack_type, "Norm character partition incorrect"
 
-        if attack_type == "L1-Reform":
+        if attack_type == "L1-Orig":
             attack_key_word = "L1"
         else:
             attack_key_word = attack_type
