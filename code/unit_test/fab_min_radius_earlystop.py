@@ -220,7 +220,8 @@ def main(cfg, default_dtype=torch.double):
                 distance_dict, boundary_distance_dict, box_violation_dict, attacked_label_dict, final_key = calc_min_dist_sample_fab(
                     fab_adv_output_full, inputs, attack_type, classifier_model, labels.item(), log_file, check_feasibility=True
                 )
-
+                if not final_key:  # In case FAB cannot find a feasible solution
+                    final_key = 0
                 # === Log the best result ===
                 result_summary["sample_idx"].append(batch_idx)
                 result_summary["restart"].append(best_key)
