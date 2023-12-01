@@ -53,17 +53,18 @@ def main(args):
             filtered_fab_radius.append(fab_radius)
             filtered_granso_radius.append(granso_radius)
 
+    start = 30
     total_plot_len = 40
     print("Length: ", total_plot_len)
     x = np.linspace(0, total_plot_len, total_plot_len, endpoint=False)
-    y_max = np.amax(filtered_fab_radius[0:total_plot_len] + filtered_granso_radius[0:total_plot_len])
+    y_max = np.amax(filtered_fab_radius[start:start+total_plot_len] + filtered_granso_radius[start:start+total_plot_len])
     # === Plot Figure ===
     tick_size = 20
     legend_size = 20
     fig, ax = plt.subplots(figsize=(6, 4))
     ax.bar(
         x,
-        filtered_fab_radius[0:total_plot_len],
+        filtered_fab_radius[start:start+total_plot_len],
         alpha=0.4,
         width=0.8,
         align="edge",
@@ -72,7 +73,7 @@ def main(args):
     )
     ax.bar(
         x,
-        filtered_granso_radius[0:total_plot_len], 
+        filtered_granso_radius[start:start+total_plot_len], 
         alpha=0.6,
         width=0.45,
         align="edge",
@@ -80,12 +81,12 @@ def main(args):
         color=COLORS[1]
     )
 
-    ax.set_yticks([0.05, 0.1])
-    # ax.set_yticks([20, 40])
+    # ax.set_yticks([0.05, 0.1])
+    ax.set_yticks([450, 900])
     ax.set_xticks([0, total_plot_len // 2, total_plot_len])
     ax.tick_params(axis='y', colors="black", labelsize=tick_size)
     ax.tick_params(axis='x', labelsize=tick_size)
-    ax.set_ylim([0, 1.5 * y_max])
+    ax.set_ylim([0, 1.1 * y_max])
     ax.set_xlim([0-1, total_plot_len+1])
     ax.legend(
         loc="upper right",
@@ -101,12 +102,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--exp_name", dest="exp_name", type=str,
-        default="CIFAR-Min",
+        default="ImageNet-Min",
         help="CIFAR/ImageNet - Min experiment."
     )
     parser.add_argument(
         "--case_name", dest="case_name", type=str,
-        default="Linf",
+        default="L1",
         help="L1/L2/Linf."
     )
     args = parser.parse_args()
